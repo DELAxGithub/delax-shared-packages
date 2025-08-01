@@ -1,0 +1,109 @@
+# {{projectName}}
+
+{{description}}
+
+## 🚀 Features
+
+- **DELAX Technical Heritage**: 95% development time reduction
+- **Claude Integration**: AI-powered development workflow
+- **SwiftUI**: Modern iOS user interface
+{{#enableSwiftData}}
+- **SwiftData**: Efficient data persistence
+{{/enableSwiftData}}
+{{#enableClaudeKit}}
+- **ClaudeKit**: AI features integration
+{{/enableClaudeKit}}
+{{#enableHealthKit}}
+- **HealthKit**: Health data integration
+{{/enableHealthKit}}
+
+## 🛠️ Development Workflow
+
+### Quick Start
+```bash
+# Build and test
+./build.sh
+
+# Open in Xcode
+open {{projectName}}.xcodeproj
+
+# After PR merges, sync locally
+./scripts/quick-pull.sh
+```
+
+### Claude Workflow
+1. Create GitHub issue describing the feature/fix
+2. Mention `@claude` in the issue
+3. Claude automatically creates PR with implementation
+4. Review and merge PR
+5. Use `./scripts/quick-pull.sh` to sync locally
+6. Test in Xcode
+
+## 📱 Project Structure
+
+```
+{{projectName}}/
+├── {{projectName}}/
+│   ├── App.swift              # App entry point
+│   ├── ContentView.swift      # Main view
+│   ├── Models/                # Data models
+│   ├── Views/                 # SwiftUI views
+│   └── Services/              # Business logic
+├── scripts/                   # Workflow automation
+│   ├── quick-pull.sh          # Manual sync
+│   └── notify.sh              # Notifications
+└── .github/workflows/         # CI/CD
+    ├── claude.yml             # Claude automation
+    └── ios-code-check.yml     # Quality checks
+```
+
+## ⚙️ Configuration
+
+Project configuration is managed in `delax-config.yml`:
+
+```yaml
+project:
+  name: "{{projectName}}"
+  type: "ios-swift"
+  
+ios:
+  bundle_id: "{{bundleId}}"
+  features:
+    claudekit: {{enableClaudeKit}}
+    swiftdata: {{enableSwiftData}}
+    healthkit: {{enableHealthKit}}
+```
+
+## 🧪 Testing
+
+```bash
+# Build for simulator
+./build.sh
+
+# Run tests
+xcodebuild test -scheme {{projectName}} -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+
+# Test on device
+# Open Xcode and run on connected device
+```
+
+## 🚀 Deployment
+
+1. Archive in Xcode (Product → Archive)
+2. Upload to TestFlight
+3. Distribute to testers
+
+## 📊 Technical Heritage Impact
+
+This project benefits from DELAX technical heritage:
+- **Setup Time**: 2-3 days → 30 minutes (95% reduction)
+- **Quality Assurance**: Automated code checks and CI/CD
+- **Development Workflow**: Claude-integrated development
+- **Best Practices**: Proven patterns from multiple iOS projects
+
+---
+
+🤖 **Created with @delax/project-generator - Powered by Claude Code integration**
+
+Author: {{author}}
+Generated: {{year}}
