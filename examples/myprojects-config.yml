@@ -1,0 +1,43 @@
+# Sample delax-config.yml for MyProjects iOS development
+# Copy this to your MyProjects root directory
+
+project:
+  name: "MyProjects"
+  type: "ios-swift"
+  description: "AI-driven task breakdown project management tool"
+
+git:
+  main_branch: "main" 
+  remote_name: "origin"
+
+ios:
+  bundle_id: "com.delax.myprojects"
+  deployment_target: "17.0"
+  features:
+    claudekit: true      # AI integration for task breakdown
+    swiftdata: true      # Local data persistence
+    healthkit: false     # Not needed for PM tool
+    cloudkit: true       # Apple ecosystem sync
+
+notifications:
+  slack:
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+  email:
+    recipient: "${NOTIFICATION_EMAIL}"
+  macos:
+    enabled: true
+
+# MyProjects specific features
+features:
+  ai_task_breakdown: true
+  apple_reminders_sync: true
+  project_templates: true
+  offline_mode: true
+  smart_suggestions: true
+
+# Development workflow preferences
+workflow:
+  auto_pull: false          # Manual pull recommended for iOS
+  build_on_pull: true       # Automatically suggest Xcode build
+  notification_sounds: true # macOS notification sounds
+  pr_auto_labels: true      # Auto-label PRs by type
