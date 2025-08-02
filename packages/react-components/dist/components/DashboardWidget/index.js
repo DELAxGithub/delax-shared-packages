@@ -1,0 +1,54 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { ChevronDown, ChevronRight } from 'lucide-react';
+/**
+ * ダッシュボードウィジェットコンポーネント
+ *
+ * 折りたたみ可能なダッシュボードウィジェットを提供します。
+ * 管理画面やダッシュボードで情報をグループ化して表示する際に使用します。
+ *
+ * @param props DashboardWidgetProps
+ * @returns JSX要素
+ *
+ * @example
+ * ```tsx
+ * // 基本的な使用
+ * <DashboardWidget title="タスク一覧">
+ *   <div>タスクの内容</div>
+ * </DashboardWidget>
+ *
+ * // 折りたたみ機能付き
+ * const [collapsed, setCollapsed] = useState(false);
+ * <DashboardWidget
+ *   title="統計情報"
+ *   isCollapsed={collapsed}
+ *   onToggleCollapse={() => setCollapsed(!collapsed)}
+ * >
+ *   <div>統計データ</div>
+ * </DashboardWidget>
+ *
+ * // カスタムスタイル適用
+ * <DashboardWidget
+ *   title="メモ"
+ *   className="mb-4"
+ *   headerClassName="bg-blue-50"
+ *   contentClassName="p-4"
+ * >
+ *   <textarea className="w-full" />
+ * </DashboardWidget>
+ * ```
+ */
+export function DashboardWidget({ title, isCollapsed = false, onToggleCollapse, children, className = '', headerClassName = '', contentClassName = '', animate = true }) {
+    const baseHeaderClass = `w-full flex items-center justify-between px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 ${animate ? 'transition-colors' : ''}`;
+    const baseContentClass = `px-3 pb-3 text-sm ${animate ? 'transition-all duration-200 ease-in-out' : ''}`;
+    return (_jsxs("div", { className: `border-b border-gray-200 last:border-b-0 ${className}`, children: [_jsxs("button", { onClick: onToggleCollapse, className: `${baseHeaderClass} ${headerClassName}`, disabled: !onToggleCollapse, type: "button", "aria-expanded": !isCollapsed, "aria-controls": `widget-content-${title.replace(/\s+/g, '-').toLowerCase()}`, children: [_jsx("span", { children: title }), onToggleCollapse && (_jsx("span", { className: `text-gray-400 ${animate ? 'transition-transform duration-200' : ''}`, style: {
+                            transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)'
+                        }, children: isCollapsed ? (_jsx(ChevronRight, { size: 16 })) : (_jsx(ChevronDown, { size: 16 })) }))] }), _jsx("div", { id: `widget-content-${title.replace(/\s+/g, '-').toLowerCase()}`, className: `overflow-hidden ${animate ? 'transition-all duration-200 ease-in-out' : ''}`, style: {
+                    maxHeight: isCollapsed ? '0px' : '1000px',
+                    opacity: isCollapsed ? 0 : 1
+                }, children: _jsx("div", { className: `${baseContentClass} ${contentClassName}`, children: children }) })] }));
+}
+export function DashboardWidgetContainer({ children, className = '', allCollapsed = false, onToggleAll, title }) {
+    return (_jsxs("div", { className: `bg-white rounded-lg shadow border border-gray-200 ${className}`, children: [(title || onToggleAll) && (_jsxs("div", { className: "px-4 py-3 border-b border-gray-200 flex items-center justify-between", children: [title && _jsx("h2", { className: "text-lg font-semibold text-gray-900", children: title }), onToggleAll && (_jsx("button", { onClick: onToggleAll, className: "text-sm text-gray-500 hover:text-gray-700 transition-colors", type: "button", children: allCollapsed ? '全て展開' : '全て折りたたみ' }))] })), _jsx("div", { children: children })] }));
+}
+export default DashboardWidget;
+//# sourceMappingURL=index.js.map

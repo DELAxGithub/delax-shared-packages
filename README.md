@@ -15,6 +15,7 @@ This monorepo serves as the technical heritage management center, providing:
 ### Core Packages
 - `workflow-scripts` - Development workflow automation (quick-pull, notifications, etc.)
 - `swift-ui-components` - Reusable SwiftUI components
+- `react-components` - **NEW** React components & utilities (PMliberary heritage)
 - `ai-integration` - Claude/AI API integration patterns
 - `project-generator` - CLI tool for new project creation
 
@@ -49,6 +50,7 @@ This repository uses:
 Projects using this technical heritage:
 - **100 Days Workout** (iOS) - Source of workflow patterns
 - **DELAxPM** (Web) - PM system template source
+- **PMliberary** (Web) - **NEW** React components source
 - **MyProjects** (iOS) - First major beneficiary
 - **Future projects** - Immediate 95% setup time reduction
 

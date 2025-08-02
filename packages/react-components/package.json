@@ -1,0 +1,67 @@
+{
+  "name": "@delax/react-components",
+  "version": "1.0.0",
+  "description": "Reusable React components and utilities extracted from PMliberary",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./components/*": {
+      "import": "./dist/components/*/index.js",
+      "types": "./dist/components/*/index.d.ts"
+    },
+    "./hooks/*": {
+      "import": "./dist/hooks/*/index.js",
+      "types": "./dist/hooks/*/index.d.ts"
+    },
+    "./utils/*": {
+      "import": "./dist/utils/*/index.js",
+      "types": "./dist/utils/*/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "lint": "echo 'Linting not configured'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "react",
+    "typescript",
+    "components",
+    "utilities",
+    "hooks",
+    "kanban",
+    "dashboard",
+    "status-badge",
+    "date-utils",
+    "pmlibrrary"
+  ],
+  "author": "DELAX Development Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "@hello-pangea/dnd": "^16.5.0",
+    "date-fns": "^2.30.0",
+    "date-fns-tz": "^2.0.1",
+    "lucide-react": "^0.344.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.3"
+  }
+}
