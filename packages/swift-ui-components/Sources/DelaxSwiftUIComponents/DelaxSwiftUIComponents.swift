@@ -15,6 +15,24 @@ import SwiftUI
 /// - **DelaxShakeDetector**: Shake gesture detection for bug reporting
 /// - **DelaxBugReport**: Comprehensive bug report data models
 ///
+/// ### UI Components (New from MyProjects)
+/// - **TaskRow**: Task display with hierarchy and priority indicators
+/// - **ProgressRing**: Animated progress ring component
+/// - **ProjectCard**: Project card display component
+/// - **ProgressIndicator**: General purpose progress indicator
+/// - **TaskHierarchyView**: Hierarchical task display
+///
+/// ### Data Models (SwiftData Compatible)
+/// - **Project**: Project management data model
+/// - **Task**: Task data model with relationships
+/// - **AIContext**: AI learning context model
+/// - **TaskTemplate**: Reusable task templates
+/// - **UserFeedback**: User feedback collection
+///
+/// ### Services
+/// - **DataManager**: SwiftData operations wrapper
+/// - **JSONImportService**: JSON import functionality
+///
 /// ## Quick Start
 ///
 /// ```swift
@@ -51,11 +69,11 @@ import SwiftUI
 /// )
 /// ```
 
-@available(iOS 16.0, macOS 13.0, *)
+@available(iOS 17.0, macOS 14.0, *)
 public struct DelaxSwiftUIComponents {
     
     /// Current version of the DelaxSwiftUIComponents library
-    public static let version = "1.0.0"
+    public static let version = "2.0.0"
     
     /// Library information
     public static let info = LibraryInfo(
@@ -69,7 +87,7 @@ public struct DelaxSwiftUIComponents {
 
 // MARK: - Library Information
 
-@available(iOS 16.0, macOS 13.0, *)
+@available(iOS 17.0, macOS 14.0, *)
 public struct LibraryInfo {
     public let name: String
     public let version: String
@@ -88,19 +106,7 @@ public struct LibraryInfo {
 
 // MARK: - Public API Exports
 
-// Bug Report System
-@_exported import struct DelaxBugReport
-@_exported import class DelaxBugReportManager  
-@_exported import struct DelaxBugReportView
-@_exported import class DelaxShakeDetector
-
-// Utility Types
-@_exported import enum DelaxBugCategory
-@_exported import enum DelaxLogLevel
-@_exported import struct DelaxUserAction
-@_exported import struct DelaxLogEntry
-@_exported import struct DelaxDeviceInfo
-
-// GitHub Integration
-@_exported import struct DelaxGitHubIssue
-@_exported import enum DelaxBugReportError
+// Re-export SwiftUI and SwiftData for convenience
+@_exported import SwiftUI
+@_exported import SwiftData
+@_exported import Foundation
