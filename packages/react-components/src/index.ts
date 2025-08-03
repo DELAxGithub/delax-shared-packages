@@ -1,86 +1,82 @@
-// Components
-export { StatusBadge, ProgressBar } from './components/StatusBadge';
-export type { StatusBadgeProps, ProgressBarProps } from './components/StatusBadge';
+/**
+ * @delax/shared-components
+ * 
+ * PMliberaryプロジェクトから抽出した再利用可能なReactコンポーネント・ユーティリティライブラリ
+ * 
+ * @author DELAX
+ * @version 1.0.0
+ * @license MIT
+ */
 
-export { DashboardWidget, DashboardWidgetContainer } from './components/DashboardWidget';
-export type { DashboardWidgetProps, DashboardWidgetContainerProps } from './components/DashboardWidget';
+// Utils - ユーティリティ関数
+export * from './Utils/timezone';
+export * from './Utils/dateUtils';
+export * from './Utils/supabaseHelpers';
 
-export { BaseModal, ConfirmModal } from './components/Modal';
-export type { BaseModalProps, ConfirmModalProps } from './components/Modal';
+// Components - UIコンポーネント
+export { StatusBadge, STATUS_PRESETS } from './Components/StatusBadge';
+export type { StatusBadgeProps, StatusConfig } from './Components/StatusBadge';
 
-export { KanbanBoard, KanbanCardComponent, KanbanColumnComponent } from './components/KanbanBoard';
+export { DashboardWidget, DashboardGrid } from './Components/Dashboard/DashboardWidget';
+export type { DashboardWidgetProps, DashboardGridProps } from './Components/Dashboard/DashboardWidget';
+
+export { BaseModal, ConfirmModal } from './Components/Modals/BaseModal';
+export type { BaseModalProps, ConfirmModalProps } from './Components/Modals/BaseModal';
+
+// Contexts - Reactコンテキスト
+export { AuthProvider, useAuth, useAuthGuard, useAdminAuth } from './Contexts/AuthContext';
+export type { AuthContextType, AuthConfig, AuthProviderProps } from './Contexts/AuthContext';
+
+// Hooks - カスタムReactフック
+export { useDashboard, useWidgetData } from './Hooks/useDashboard';
 export type { 
-  KanbanCard, 
-  KanbanColumn, 
-  KanbanCardProps, 
-  KanbanColumnProps, 
-  KanbanBoardProps 
-} from './components/KanbanBoard';
+  DashboardWidget as DashboardWidgetConfig,
+  DashboardConfig, 
+  DashboardStats, 
+  UseDashboardConfig 
+} from './Hooks/useDashboard';
 
-// Hooks
-export { useDashboard } from './hooks/useDashboard';
+// Types - TypeScript型定義
+export type * from './Types/workflow';
+
+// Services - ビジネスロジック
+export { ReportGenerator, ReportDelivery } from './Services/reportGenerator';
 export type { 
-  DashboardAPI, 
-  UseDashboardOptions, 
-  UseDashboardReturn 
-} from './hooks/useDashboard';
+  ReportConfig, 
+  DataSourceConfig, 
+  ReportStatistics, 
+  GeneratedReport,
+  ReportDeliveryConfig 
+} from './Services/reportGenerator';
 
-// Utilities
-export {
-  getJSTToday,
-  parseJSTDate,
-  isJSTBefore,
-  formatJSTDate,
-  JST_TIMEZONE
-} from './utils/timezone';
+export { WorkflowEngine, WorkflowEngineFactory } from './Services/workflowEngine';
+export type { 
+  WorkflowChangeEvent, 
+  WorkflowEngineConfig 
+} from './Services/workflowEngine';
 
-export {
-  calculateCompleteDate,
-  calculatePrDueDate,
-  BusinessDateUtils
-} from './utils/dateUtils';
+// プリセット・設定
+export { WORKFLOW_PRESETS } from './Types/workflow';
+export { DEFAULT_DELIVERY_CONFIG } from './Utils/dateUtils';
 
-// Types - Episode
-export type {
-  EpisodeStatus,
-  EpisodeType,
-  MaterialStatus,
-  EpisodeStatusInfo,
-  Episode,
-  EpisodeDetail,
-  StatusHistory,
-  NewEpisode,
-  UpdateEpisode
-} from './types/episode';
+/**
+ * ライブラリ情報
+ */
+export const LIBRARY_INFO = {
+  name: '@delax/shared-components',
+  version: '2.0.0',
+  description: 'Reusable components and utilities extracted from PMliberary project',
+  author: 'DELAX',
+  repository: 'https://github.com/DELAxGithub/delax-shared-packages',
+  license: 'MIT'
+} as const;
 
-export {
-  STATUS_ORDER,
-  STATUS_COLORS,
-  REVERTIBLE_STATUS,
-  StatusManager
-} from './types/episode';
-
-// Types - Dashboard
-export type {
-  DashboardWidget as DashboardWidgetType,
-  QuickLink,
-  QuickLinksContent,
-  MemoContent,
-  Task,
-  TasksContent,
-  ScheduleContent,
-  ScheduleEvent,
-  CustomContent,
-  NewDashboardWidget,
-  UpdateDashboardWidget,
-  DashboardConfig,
-  DashboardLayout,
-  DashboardFilter,
-  DashboardStats,
-  WidgetOperationResult
-} from './types/dashboard';
-
-export { DashboardUtils } from './types/dashboard';
-
-// Re-export commonly used external dependencies for convenience
-export { ChevronDown, ChevronRight } from 'lucide-react';
+/**
+ * 互換性情報
+ */
+export const COMPATIBILITY = {
+  react: '^18.0.0',
+  reactDom: '^18.0.0',
+  typescript: '^5.0.0',
+  supabase: '^2.39.0'
+} as const;

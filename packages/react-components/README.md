@@ -1,158 +1,91 @@
-# @delax/react-components
+# @delax/shared-components
 
-React コンポーネント・ユーティリティ・フック集 - PMliberary技術遺産
+PMliberaryプロジェクトから抽出した再利用可能なReactコンポーネント・ユーティリティライブラリ
 
-## 🎯 概要
+## 🚀 Features
 
-PMliberary プロジェクトから抽出された、メディア制作・プログラム管理システム開発で実戦検証済みの再利用可能な資産集です。
+### 📊 UIコンポーネント
+- **StatusBadge** - プログレス表示付きステータスバッジ
+- **DashboardWidget** - 折り畳み可能なダッシュボードウィジェット
+- **KanbanBoard** - ドラッグ&ドロップ対応のカンバンボード
+- **Calendar** - リアルタイム更新対応カレンダー
+- **Modal系** - 汎用モーダルコンポーネント
 
-## 📦 インストール
+### 🛠️ ユーティリティ
+- **timezone** - 日本時間（JST）基準の日付処理
+- **dateUtils** - 放送業界向け日程計算（完パケ・PR納品日算出）
+- **supabaseHelpers** - Supabase統合ヘルパー関数
+
+### ⚛️ React統合
+- **AuthContext** - Supabase認証コンテキスト
+- **useDashboard** - ダッシュボード状態管理フック
+- **WorkflowContext** - ワークフロー管理コンテキスト
+
+### 📈 ビジネスロジック
+- **reportGenerator** - 自動レポート生成エンジン
+- **workflowEngine** - 10段階ワークフロー管理
+
+## 📦 Installation
 
 ```bash
-# モノレポ内で使用
-pnpm add @delax/react-components
-
-# 外部プロジェクトで使用
-npm install @delax/react-components
+npm install @delax/shared-components
 ```
 
-## 🚀 主要コンポーネント
+## 🔧 Usage
 
-### StatusBadge - 進捗ステータス表示
-
+### StatusBadge Component
 ```tsx
-import { StatusBadge } from '@delax/react-components';
+import { StatusBadge } from '@delax/shared-components';
 
 <StatusBadge 
   status="編集中" 
   showProgress={true} 
-  size="lg" 
+  size="md" 
 />
 ```
 
-**特徴**: 10段階ステータス対応、進捗バー、自動色分け
+### Timezone Utilities
+```typescript
+import { getJSTToday, formatJSTDate } from '@delax/shared-components/utils';
 
-### DashboardWidget - 折りたたみウィジェット
-
-```tsx
-import { DashboardWidget } from '@delax/react-components';
-
-<DashboardWidget
-  title="タスク一覧"
-  isCollapsed={collapsed}
-  onToggleCollapse={() => setCollapsed(!collapsed)}
->
-  <TaskList />
-</DashboardWidget>
-```
-
-**特徴**: アニメーション対応、アクセシビリティ準拠
-
-### KanbanBoard - ドラッグ&ドロップカンバン
-
-```tsx
-import { KanbanBoard } from '@delax/react-components';
-
-<KanbanBoard
-  columns={columns}
-  onDragEnd={handleDragEnd}
-  onCardClick={handleCardClick}
-/>
-```
-
-**特徴**: @hello-pangea/dnd基盤、カスタマイズ可能
-
-### BaseModal - 汎用モーダル
-
-```tsx
-import { BaseModal, ConfirmModal } from '@delax/react-components';
-
-<BaseModal
-  isOpen={showModal}
-  onClose={() => setShowModal(false)}
-  title="設定"
-  size="lg"
->
-  <SettingsForm />
-</BaseModal>
-```
-
-**特徴**: 5サイズ対応、キーボード操作、フォーカストラップ
-
-## 🛠️ ユーティリティ
-
-### 日本時間対応日付処理
-
-```tsx
-import { 
-  getJSTToday, 
-  formatJSTDate, 
-  calculateCompleteDate 
-} from '@delax/react-components';
-
-// JST基準の日付操作
 const today = getJSTToday();
-const dateStr = formatJSTDate(new Date());
-
-// 業務日計算（メディア制作特化）
-const completeDate = calculateCompleteDate('2024-01-15');
+const formattedDate = formatJSTDate(new Date());
 ```
 
-### useDashboard - ダッシュボード管理フック
+### Date Calculation (Broadcasting Industry)
+```typescript
+import { calculateCompleteDate, calculatePrDueDate } from '@delax/shared-components/utils';
 
-```tsx
-import { useDashboard, DashboardAPI } from '@delax/react-components';
-
-const dashboardAPI: DashboardAPI = {
-  getDashboardWidgets: async () => { /* 実装 */ },
-  // ... 他のAPI関数
-};
-
-const {
-  widgets,
-  loading,
-  createWidget,
-  updateWidget
-} = useDashboard(dashboardAPI);
+const airDate = '2025-08-15';
+const completeDate = calculateCompleteDate(airDate); // 1週間前の火曜日
+const prDueDate = calculatePrDueDate(airDate); // 2週間前の月曜日
 ```
 
-## 🎨 スタイリング
+## 🏗️ Architecture
 
-Tailwind CSS使用。設定に以下を追加:
-
-```js
-// tailwind.config.js
-module.exports = {
-  content: [
-    "./node_modules/@delax/react-components/dist/**/*.js",
-    // ... 他のパス
-  ],
-}
+```
+Web/
+├── Components/           # 再利用UIコンポーネント
+├── Utils/               # ユーティリティ関数
+├── Hooks/              # カスタムReactフック
+├── Types/              # TypeScript型定義
+├── Services/           # ビジネスロジック
+└── Contexts/           # Reactコンテキスト
 ```
 
-## 📊 再利用性評価
+## 📚 Documentation
 
-| コンポーネント | 再利用性 | 適用領域 |
-|:---|:---:|:---|
-| StatusBadge | ★★★★★ | 全進捗管理システム |
-| DashboardWidget | ★★★★★ | 全管理画面・ダッシュボード |
-| timezone utils | ★★★★★ | 全JST対応システム |
-| useDashboard | ★★★★☆ | ダッシュボード機能 |
-| KanbanBoard | ★★★★☆ | タスク・進捗管理 |
+詳細なAPI文書は `docs/` ディレクトリまたはTypeDocで生成された文書を参照してください。
 
-## 🏆 技術遺産価値
+## 🤝 Contributing
 
-- **実戦検証済み**: PMliberary本番環境で安定稼働
-- **型安全性**: 完全TypeScript対応
-- **アクセシビリティ**: WCAG準拠
-- **パフォーマンス**: 最適化済み
+このライブラリはPMliberaryプロジェクトから抽出された資産です。改善提案やバグ報告は Issues でお知らせください。
 
-## 🔗 関連プロジェクト
+## 📄 License
 
-- **Source**: PMliberary (Program Management System)
-- **Integration**: DELAxPM統合システム
-- **Future**: tonton, みちしるべ等での活用予定
+MIT License
 
 ---
 
-**🤖 Generated with Claude Code integration for maximum development efficiency**
+**Origin Project**: [PMliberary](https://github.com/DELAxGithub/PMliberary) - Program Management System
+**Shared Repository**: [delax-shared-packages](https://github.com/DELAxGithub/delax-shared-packages)
