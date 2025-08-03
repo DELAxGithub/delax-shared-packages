@@ -1,0 +1,64 @@
+{
+  "name": "@delax/ios-auto-fix",
+  "version": "0.1.0",
+  "description": "Universal iOS project build error auto-fix system powered by Claude 4 Sonnet",
+  "keywords": [
+    "ios",
+    "xcode",
+    "build",
+    "auto-fix",
+    "claude",
+    "ai",
+    "swift",
+    "swiftui"
+  ],
+  "author": "DELAX",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DELAxGithub/delax-shared-packages.git",
+    "directory": "native-tools/ios-auto-fix"
+  },
+  "homepage": "https://github.com/DELAxGithub/delax-shared-packages/tree/main/native-tools/ios-auto-fix",
+  "bugs": {
+    "url": "https://github.com/DELAxGithub/delax-shared-packages/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "bin": {
+    "ios-auto-fix": "./Scripts/auto-build-fix.sh",
+    "ios-watch-fix": "./Scripts/watch-and-fix.sh"
+  },
+  "files": [
+    "Scripts/",
+    "Templates/",
+    "Workflows/",
+    "Documentation/",
+    "Examples/",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "echo '📦 iOS Auto-Fix installed! Copy Templates/auto-fix-config.yml to your project root and customize it.'",
+    "test": "bash Scripts/auto-build-fix.sh --help",
+    "setup": "cp Templates/auto-fix-config.yml ./auto-fix-config.yml && echo '⚙️  Configuration template copied. Please customize auto-fix-config.yml for your project.'"
+  },
+  "peerDependencies": {
+    "claude-cli": ">=1.0.0"
+  },
+  "devDependencies": {},
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/DELAxGithub"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

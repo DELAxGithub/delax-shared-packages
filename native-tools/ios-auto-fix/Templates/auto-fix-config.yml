@@ -1,0 +1,237 @@
+# =============================================================================
+# iOS Auto Build & Fix Configuration Template
+# Universal iOS project build error auto-fix system configuration
+# Copy this file to your project root as 'auto-fix-config.yml' and customize
+# =============================================================================
+
+# Project Configuration
+project:
+  name: "YourProject"                          # Replace with your project name
+  xcode_project: "YourProject.xcodeproj"      # Path to your .xcodeproj file
+  scheme: "YourScheme"                         # Your build scheme name
+  configuration: "Debug"                       # Debug or Release
+  target_platform: "iOS Simulator"            # iOS Simulator or iOS Device
+  target_device: "iPhone 16"                  # Target device for simulator
+  ios_version: "latest"                        # iOS version or "latest"
+
+# Build Settings
+build:
+  max_attempts: 5
+  timeout_seconds: 300
+  clean_before_build: true
+  parallel_builds: true
+  
+  # Build flags
+  flags:
+    - "-destination 'platform=iOS Simulator,name=iPhone 15,OS=latest'"
+    - "-configuration Debug"
+    - "-quiet"  # Reduce verbose output
+
+# Error Detection & Processing
+error_detection:
+  # Error types to process
+  enabled_types:
+    - swift_compiler
+    - swiftui_specific
+    - build_system
+    - import_missing
+    - code_signing
+    - critical_warnings
+  
+  # Error patterns to ignore (regex)
+  ignore_patterns:
+    - "warning:.*deprecated"
+    - "note:.*available in iOS"
+    - "warning:.*will be deprecated"
+  
+  # Critical error patterns that should stop auto-fix
+  critical_patterns:
+    - "error:.*Segmentation fault"
+    - "error:.*Internal compiler error"
+    - "fatal error:.*too many errors emitted"
+
+# Claude AI Integration
+claude:
+  # Model to use for patch generation (Claude Max with Claude 4 Sonnet)
+  model: "claude-4-sonnet-20250514"
+  
+  # Context settings (Enhanced for Claude 4 capabilities)
+  context:
+    include_project_structure: true
+    include_related_files: true
+    max_context_files: 10
+    max_context_lines: 200
+    include_architecture_docs: true
+    include_recent_changes: true
+  
+  # Prompt customization (Optimized for Claude 4 Sonnet)
+  prompts:
+    system_context: |
+      You are Claude 4 Sonnet, an expert iOS developer working on a SwiftUI application.
+      
+      Architecture: SwiftUI + Modern iOS Development Patterns
+      Key Features: Native iOS experience with best practices
+      
+      Your role: Generate precise, minimal fixes that:
+      - Follow SwiftUI best practices
+      - Maintain clean architecture patterns
+      - Follow Apple HIG guidelines
+      - Ensure iOS compatibility
+      
+    error_analysis: |
+      Analyze these iOS build errors with your advanced reasoning capabilities.
+      
+      Provide:
+      1. Root cause analysis
+      2. Minimal code fixes as git patches
+      3. Architecture compliance verification
+      4. Potential side effects assessment
+      
+      Generate clean unified diffs ready for `git apply`.
+
+# Patch Application
+patch:
+  # Safety settings
+  backup_enabled: true
+  backup_retention_days: 7
+  max_backup_size_mb: 100
+  
+  # Application strategy
+  strategy: "safe"  # safe, aggressive, conservative
+  
+  # Verification settings
+  verify_syntax: true
+  verify_compile: false  # Too slow for auto mode
+  
+  # Rollback settings
+  auto_rollback_on_failure: true
+  rollback_timeout_seconds: 30
+
+# File Watching (for watch mode)
+watch:
+  # Directories to monitor (customize for your project structure)
+  directories:
+    - "YourProject"              # Replace with your main source directory
+    - "YourProject/Sources"      # Common source patterns
+    - "YourProject/Views"
+    - "YourProject/Models"
+    - "YourProject/Services"
+  
+  # File patterns to watch
+  include_patterns:
+    - "*.swift"
+    - "*.plist"
+    - "*.xcconfig"
+    - "*.yml"
+    - "*.yaml"
+  
+  # File patterns to ignore
+  exclude_patterns:
+    - "*.xcuserstate"
+    - "*.xcscheme"
+    - "*.xcbkptlist"
+    - ".DS_Store"
+    - "*.tmp"
+    - "*.log"
+    - "*~"
+    - "*.swp"
+    - "*.swo"
+  
+  # Timing settings
+  debounce_seconds: 3
+  max_events_per_minute: 10
+
+# Logging & Notifications
+logging:
+  level: "info"  # debug, info, warning, error
+  
+  # Output destinations
+  console: true
+  file: true
+  log_file: "build-fix.log"
+  
+  # Log rotation
+  max_log_size_mb: 10
+  max_log_files: 5
+
+notifications:
+  # macOS notifications
+  macos_notifications: true
+  
+  # Sound alerts
+  sound_on_success: false
+  sound_on_failure: true
+  
+  # Slack/Discord webhooks (optional)
+  webhooks:
+    enabled: false
+    success_webhook: ""
+    failure_webhook: ""
+
+# Project-Specific Rules
+project_rules:
+  # SwiftData specific fixes
+  swiftdata:
+    auto_add_model_decorator: true
+    fix_relationship_issues: true
+    handle_migration_errors: true
+  
+  # SwiftUI specific fixes
+  swiftui:
+    fix_binding_issues: true
+    handle_state_management: true
+    fix_navigation_issues: true
+    handle_preview_errors: true
+  
+  # CloudKit integration
+  cloudkit:
+    handle_sync_errors: true
+    fix_schema_issues: true
+  
+  # Architecture enforcement
+  architecture:
+    enforce_mvvm: true
+    suggest_viewmodel_fixes: true
+    maintain_separation: true
+
+# Performance Settings
+performance:
+  # Parallel processing
+  max_concurrent_fixes: 2
+  
+  # Resource limits
+  max_memory_mb: 512
+  max_cpu_percent: 50
+  
+  # Cache settings
+  cache_enabled: true
+  cache_ttl_minutes: 60
+  max_cache_size_mb: 50
+
+# Development Mode Settings
+development:
+  # Debug options
+  verbose_output: false
+  save_intermediate_files: false
+  preserve_temp_files: false
+  
+  # Testing options
+  dry_run: false
+  simulate_failures: false
+  
+  # Analysis options
+  profile_performance: false
+  collect_metrics: false
+
+# Error Reporting
+error_reporting:
+  # Automatic issue creation
+  auto_create_issues: false
+  github_repo: "username/your-repo"        # Replace with your GitHub repo
+  
+  # Error categorization
+  categorize_errors: true
+  
+  # Statistics collection
+  collect_stats: true
+  stats_file: "build-fix-stats.json"

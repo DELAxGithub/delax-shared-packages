@@ -12,21 +12,49 @@ This monorepo serves as the technical heritage management center, providing:
 
 ## 📦 Packages
 
-### Core Packages
-- `workflow-scripts` - Development workflow automation (quick-pull, notifications, etc.)
-- `swift-ui-components` - Reusable SwiftUI components
-- `ai-integration` - Claude/AI API integration patterns
-- `project-generator` - CLI tool for new project creation
+### 🔧 Native Development Tools
+- `ios-auto-fix` - Universal iOS build error auto-fix system powered by Claude 4 Sonnet
+- `swift-ui-components` - Reusable SwiftUI components with bug reporting integration
 
-### Platform-Specific Packages
+### 🤖 Development Automation
+- `claude-integration` - Universal Claude AI integration library for development automation
+- `workflow-scripts` - Development workflow automation (quick-pull, notifications, etc.)
+
+### 🛠️ Core Packages
+- `project-generator` - CLI tool for new project creation with AI assistance
+
+### 📱 Platform-Specific Templates
 - `ios-swift-template` - iOS Swift project templates
 - `pm-web-template` - Project Management web application templates
 - `supabase-integration` - Supabase backend integration utilities
 
 ## 🚀 Quick Start
 
+### iOS Auto-Fix System
 ```bash
-# Install globally
+# Install iOS Auto-Fix globally
+npm install -g @delax/ios-auto-fix
+
+# Setup in your iOS project
+cd YourIOSProject
+ios-auto-fix setup
+
+# Start auto-fix watch mode
+ios-watch-fix
+```
+
+### Claude AI Integration
+```bash
+# Install Claude integration
+npm install @delax/claude-integration
+
+# Use in your development tools
+import { ClaudeIntegration } from '@delax/claude-integration';
+```
+
+### Project Generation
+```bash
+# Install project generator
 npm install -g @delax/project-generator
 
 # Create new iOS project

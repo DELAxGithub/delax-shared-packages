@@ -1,0 +1,276 @@
+name: iOS Auto Build & Fix
+
+# This is a template - customize the paths for your project structure
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'YourProject/**/*.swift'        # Replace with your project path
+      - 'YourProject/**/*.plist'
+      - 'YourProject/**/*.xcconfig'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'YourProject/**/*.swift'        # Replace with your project path
+      - 'YourProject/**/*.plist'
+      - 'YourProject/**/*.xcconfig'
+  workflow_dispatch:
+    inputs:
+      max_attempts:
+        description: 'Maximum fix attempts'
+        required: false
+        default: '3'
+        type: choice
+        options:
+        - '1'
+        - '3'
+        - '5'
+
+env:
+  # Customize these values for your project
+  XCODE_VERSION: '16.2'                    # Xcode version to use
+  IOS_SIMULATOR_DEVICE: 'iPhone 16'       # Target simulator device
+  IOS_SIMULATOR_VERSION: '18.5'           # iOS version
+  PROJECT_NAME: 'YourProject'              # Replace with your project name
+  XCODE_PROJECT: 'YourProject.xcodeproj'  # Replace with your .xcodeproj file
+  SCHEME: 'YourScheme'                     # Replace with your scheme name
+
+jobs:
+  auto-build-fix:
+    runs-on: macos-15
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ env.XCODE_VERSION }}
+    
+    - name: Install Claude CLI
+      run: |
+        # Install Claude CLI for AI-powered fixes
+        pip3 install claude-cli
+        # Alternative: npm install -g @anthropic/claude-cli
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    
+    - name: Setup iOS Simulator
+      run: |
+        # List available devices
+        xcrun simctl list devices available
+        
+        # Boot the iOS Simulator
+        xcrun simctl boot "${{ env.IOS_SIMULATOR_DEVICE }}" || echo "Simulator already booted"
+        
+        # Wait for simulator to be ready
+        sleep 10
+    
+    - name: Create necessary directories
+      run: |
+        mkdir -p builderror
+        mkdir -p .patch-backups
+        # Make scripts executable (assumes you've copied the scripts to your project)
+        chmod +x scripts/*.sh || echo "No scripts directory found - please ensure iOS Auto-Fix scripts are in your project"
+    
+    - name: Configure Auto-Fix System
+      run: |
+        # Update configuration for GitHub Actions environment
+        mkdir -p config
+        cat > config/github-actions-config.yml << EOF
+        # GitHub Actions specific configuration  
+        project:
+          name: "${{ env.PROJECT_NAME }}"
+          xcode_project: "${{ env.XCODE_PROJECT }}"
+          scheme: "${{ env.SCHEME }}"
+          configuration: "Debug"
+          target_platform: "iOS Simulator"
+          target_device: "${{ env.IOS_SIMULATOR_DEVICE }}"
+          ios_version: "${{ env.IOS_SIMULATOR_VERSION }}"
+        
+        build:
+          max_attempts: ${{ github.event.inputs.max_attempts || '3' }}
+          timeout_seconds: 600
+          clean_before_build: true
+        
+        claude:
+          model: "claude-4-sonnet-20250514"
+          
+        patch:
+          backup_enabled: true
+          auto_rollback_on_failure: true
+          verify_syntax: true
+        
+        logging:
+          level: "info"
+          console: true
+        EOF
+    
+    - name: Run Auto Build & Fix
+      id: auto_fix
+      run: |
+        set -e
+        
+        echo "🚀 Starting iOS Auto Build & Fix with Claude 4 Sonnet"
+        echo "Max attempts: ${{ github.event.inputs.max_attempts || '3' }}"
+        echo "Project: ${{ env.PROJECT_NAME }}"
+        echo "Xcode Project: ${{ env.XCODE_PROJECT }}"
+        echo "Scheme: ${{ env.SCHEME }}"
+        
+        # Set environment variables for Claude CLI
+        export ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+        export CLAUDE_MODEL="claude-4-sonnet-20250514"
+        
+        # Run the auto build & fix system
+        if ./scripts/auto-build-fix.sh; then
+          echo "✅ Build successful or auto-fixed!"
+          echo "build_status=success" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Build failed after auto-fix attempts"
+          echo "build_status=failed" >> $GITHUB_OUTPUT
+          
+          # Save error details for the summary
+          if [ -f "builderror/errors.txt" ]; then
+            echo "error_details<<EOF" >> $GITHUB_OUTPUT
+            cat builderror/errors.txt >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+          
+          exit 1
+        fi
+      env:
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    
+    - name: Generate Build Report
+      if: always()
+      run: |
+        echo "## 🤖 iOS Auto Build & Fix Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ${{ steps.auto_fix.outputs.build_status }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Model:** Claude 4 Sonnet (Claude Max)" >> $GITHUB_STEP_SUMMARY
+        echo "**Simulator:** ${{ env.IOS_SIMULATOR_DEVICE }} (iOS ${{ env.IOS_SIMULATOR_VERSION }})" >> $GITHUB_STEP_SUMMARY
+        echo "**Max Attempts:** ${{ github.event.inputs.max_attempts || '3' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.auto_fix.outputs.build_status }}" = "success" ]; then
+          echo "✅ **Result:** Build completed successfully!" >> $GITHUB_STEP_SUMMARY
+          
+          # Show what was fixed if any patches were applied
+          if [ -f "builderror/patch.diff" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🔧 Applied Fixes" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`diff" >> $GITHUB_STEP_SUMMARY
+            head -50 "builderror/patch.diff" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "❌ **Result:** Build failed after auto-fix attempts" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -n "${{ steps.auto_fix.outputs.error_details }}" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🚨 Remaining Errors" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "${{ steps.auto_fix.outputs.error_details }}" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+    
+    - name: Upload Build Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ github.run_number }}
+        path: |
+          build.log
+          builderror/
+          .patch-backups/
+        retention-days: 7
+    
+    - name: Commit Auto-fixes
+      if: steps.auto_fix.outputs.build_status == 'success' && github.event_name == 'push'
+      run: |
+        # Check if there are any changes to commit
+        if git diff --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        # Configure git
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action Auto-Fix"
+        
+        # Add and commit changes
+        git add .
+        git commit -m "🤖 Auto-fix build errors with Claude 4 Sonnet
+
+        Applied automatic fixes to resolve build errors.
+        
+        🧠 Generated with Claude 4 Sonnet (Claude Max)
+        🔧 Auto-Build-Fix System v1.0
+        
+        Co-Authored-By: Claude 4 <noreply@anthropic.com>" || echo "No changes to commit"
+        
+        # Push changes
+        git push origin ${{ github.ref_name }} || echo "Nothing to push"
+    
+    - name: Create Issue for Failed Builds
+      if: steps.auto_fix.outputs.build_status == 'failed' && github.event_name == 'push'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const errorDetails = `${{ steps.auto_fix.outputs.error_details }}`;
+          
+          const issueBody = `## 🚨 Auto-Fix System Failed
+          
+          The iOS Auto Build & Fix system was unable to resolve build errors automatically.
+          
+          **Build Information:**
+          - **Commit:** ${{ github.sha }}
+          - **Branch:** ${{ github.ref_name }}
+          - **Model:** Claude 4 Sonnet (Claude Max)
+          - **Max Attempts:** ${{ github.event.inputs.max_attempts || '3' }}
+          - **Simulator:** ${{ env.IOS_SIMULATOR_DEVICE }} (iOS ${{ env.IOS_SIMULATOR_VERSION }})
+          
+          **Remaining Errors:**
+          \`\`\`
+          ${errorDetails}
+          \`\`\`
+          
+          **Next Steps:**
+          1. Review the error details above
+          2. Check the build logs in the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          3. Fix the errors manually
+          4. Consider updating the auto-fix configuration if this is a recurring issue
+          
+          **Auto-Fix System:**
+          - 🤖 Powered by Claude 4 Sonnet
+          - 📝 Configuration: \`config/auto-fix-config.yml\`
+          - 🔧 Scripts: \`scripts/auto-build-fix.sh\`
+          
+          /cc @${{ github.actor }}`;
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `🚨 Auto-Fix Failed: Build errors in ${context.payload.head_commit?.message?.substring(0, 50) || 'commit'} (${context.sha.substring(0, 7)})`,
+            body: issueBody,
+            labels: ['bug', 'auto-fix-failed', 'build-error']
+          });
+
+  notify-completion:
+    runs-on: ubuntu-latest
+    needs: auto-build-fix
+    if: always()
+    steps:
+    - name: Notify completion
+      run: |
+        if [ "${{ needs.auto-build-fix.result }}" = "success" ]; then
+          echo "🎉 iOS Auto Build & Fix completed successfully with Claude 4 Sonnet!"
+        else
+          echo "⚠️ iOS Auto Build & Fix encountered issues. Check the build job for details."
+        fi
