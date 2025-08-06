@@ -15,6 +15,7 @@ This monorepo serves as the technical heritage management center, providing:
 ### 🔧 Native Development Tools
 - `ios-auto-fix` - Universal iOS build error auto-fix system powered by Claude 4 Sonnet
 - `ios-auto-bug-discovery` - **⭐ Revolutionary automatic bug detection framework** for iOS apps
+- `SwiftUIQualityKit` - SwiftUI + CloudKit specialized quality management automation system
 - `swift-ui-components` - Reusable SwiftUI components with bug reporting integration
 
 ### 🤖 Development Automation
@@ -59,6 +60,18 @@ BugDetectionEngine.shared.startMonitoring()
 // 🐛 Task creation failures, UI freezes, data inconsistencies
 ```
 
+### SwiftUI Quality Kit
+```bash
+# Copy SwiftUIQualityKit to your iOS project
+cp -r delax-shared-packages/native-tools/SwiftUIQualityKit ./
+
+# Quick setup (30 seconds)
+./SwiftUIQualityKit/quick_setup.sh
+
+# Start real-time quality monitoring
+./SwiftUIQualityKit/watch_mode.sh
+```
+
 ### Claude AI Integration
 ```bash
 # Install Claude integration
@@ -95,6 +108,22 @@ Projects using this technical heritage:
 - **DELAxPM** (Web) - PM system template source  
 - **MyProjects** (iOS) - **⭐ First iOS Auto Bug Discovery Framework deployment** with proven results
 - **Future iOS projects** - Automatic bug detection with 90%+ accuracy, 99% faster bug discovery
+
+---
+
+## 📚 Documentation
+
+### Quick Access
+- **[📖 Documentation Index](./DOCUMENTATION_INDEX.md)** - Complete documentation hub
+- **[🔗 API Reference](./API_REFERENCE.md)** - Detailed API documentation
+- **[🚀 Setup Guide](./SETUP_GUIDE.md)** - Installation and configuration
+- **[💡 Usage Guide](./USAGE_GUIDE.md)** - Practical examples (Japanese)
+- **[🤖 Claude.md](./CLAUDE.md)** - Claude Code guidance
+
+### By Category
+- **Native Tools**: [iOS Auto-Fix](./native-tools/ios-auto-fix/README.md) • [SwiftUIQualityKit](./native-tools/SwiftUIQualityKit/README.md) • [Swift UI Components](./packages/swift-ui-components/README.md)
+- **Automation**: [Claude Integration](./automation/claude-integration/README.md) • [Workflow Scripts](./packages/workflow-scripts/README.md)
+- **Tools**: [Project Generator](./tools/project-generator/README.md)
 
 ---
 
