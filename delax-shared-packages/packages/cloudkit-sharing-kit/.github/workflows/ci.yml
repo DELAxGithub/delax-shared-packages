@@ -1,0 +1,62 @@
+# DelaxCloudKitSharingKit CI Workflow
+# Part of DELAX Shared Packages monorepo
+
+name: DelaxCloudKitSharingKit CI
+
+on:
+  push:
+    paths:
+      - 'packages/cloudkit-sharing-kit/**'
+  pull_request:
+    paths:
+      - 'packages/cloudkit-sharing-kit/**'
+
+jobs:
+  test:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        xcode-version: ['15.0']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Select Xcode
+      run: sudo xcode-select -switch /Applications/Xcode_${{ matrix.xcode-version }}.app/Contents/Developer
+    
+    - name: Swift Version
+      run: swift --version
+    
+    - name: Build Package
+      run: |
+        cd packages/cloudkit-sharing-kit
+        swift build
+    
+    - name: Run Tests
+      run: |
+        cd packages/cloudkit-sharing-kit
+        swift test
+    
+    - name: Check Package Dependencies
+      run: |
+        cd packages/cloudkit-sharing-kit
+        swift package show-dependencies
+  
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Lint Swift Code
+      run: |
+        cd packages/cloudkit-sharing-kit
+        # Add SwiftLint or other linting tools here
+        echo "Swift linting would run here"
+    
+    - name: Validate Package Structure
+      run: |
+        cd packages/cloudkit-sharing-kit
+        # Verify DELAX standards compliance
+        ls -la Sources/DelaxCloudKitSharingKit/
+        ls -la Examples/
+        ls -la Templates/

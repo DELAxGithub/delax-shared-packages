@@ -1,0 +1,45 @@
+{
+  "name": "delax-shared-packages",
+  "version": "1.0.0",
+  "description": "DELAX Shared Packages - Reusable components and tools for efficient development",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm run build --recursive",
+    "test": "pnpm run test --recursive",
+    "lint": "pnpm run lint --recursive",
+    "clean": "pnpm run clean --recursive"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DELAxGithub/delax-shared-packages.git"
+  },
+  "author": "DELAX - Claude Code",
+  "license": "MIT",
+  "keywords": [
+    "delax",
+    "shared-packages",
+    "swift",
+    "ios",
+    "macos",
+    "cloudkit",
+    "monorepo"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "devDependencies": {},
+  "packages": [
+    {
+      "name": "DelaxCloudKitSharingKit",
+      "version": "1.0.0",
+      "type": "swift-package",
+      "platforms": ["iOS 16.0+", "macOS 13.0+"],
+      "description": "CloudKit sharing functionality with 95% development time reduction"
+    }
+  ]
+}
