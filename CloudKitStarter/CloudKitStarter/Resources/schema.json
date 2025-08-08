@@ -1,0 +1,92 @@
+{
+  "development": {
+    "recordTypes": [
+      {
+        "recordType": "Note",
+        "isShareable": true,
+        "fields": [
+          {
+            "fieldName": "title",
+            "fieldType": "STRING",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": true
+          },
+          {
+            "fieldName": "content",
+            "fieldType": "STRING",
+            "isQueryable": true,
+            "isSortable": false,
+            "isSearchable": true
+          },
+          {
+            "fieldName": "createdAt",
+            "fieldType": "TIMESTAMP",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": false
+          },
+          {
+            "fieldName": "modifiedAt",
+            "fieldType": "TIMESTAMP",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": false
+          },
+          {
+            "fieldName": "isFavorite",
+            "fieldType": "INT64",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": false
+          }
+        ]
+      }
+    ]
+  },
+  "production": {
+    "recordTypes": [
+      {
+        "recordType": "Note",
+        "isShareable": true,
+        "fields": [
+          {
+            "fieldName": "title",
+            "fieldType": "STRING",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": true
+          },
+          {
+            "fieldName": "content",
+            "fieldType": "STRING",
+            "isQueryable": true,
+            "isSortable": false,
+            "isSearchable": true
+          },
+          {
+            "fieldName": "createdAt",
+            "fieldType": "TIMESTAMP",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": false
+          },
+          {
+            "fieldName": "modifiedAt",
+            "fieldType": "TIMESTAMP",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": false
+          },
+          {
+            "fieldName": "isFavorite",
+            "fieldType": "INT64",
+            "isQueryable": true,
+            "isSortable": true,
+            "isSearchable": false
+          }
+        ]
+      }
+    ]
+  }
+}
