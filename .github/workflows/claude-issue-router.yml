@@ -1,0 +1,92 @@
+name: DELAX Issue Router (Claude)
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened]
+
+jobs:
+  route-issue:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code for Issue Routing
+        id: claude
+        uses: anthropics/claude-code-action@main
+        with:
+          use_oauth: 'true'
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          prompt: |
+            ## DELAX Issue Routing System
+
+            あなたはDELAXプロジェクトのissue routing specialistです。新しいissueの内容を分析して、適切なリポジトリに転送してください。
+
+            ### DELAX プロジェクト情報
+
+            **1. MyProjects iOS App** (`delax-org/myprojects-ios`)
+            - タスク管理アプリ
+            - SwiftUI + SwiftData + CloudKit
+            - 主な機能: タスク作成、編集、同期、通知
+            - よくある問題: タスク作成ボタンの不具合、CloudKit同期エラー、SwiftDataの保存問題
+
+            **2. 100 Days Workout** (`delax-org/100-days-workout-ios`)  
+            - フィットネス・ワークアウト記録アプリ
+            - SwiftUI + HealthKit + Core Data
+            - 主な機能: ワークアウト記録、進捗追跡、HealthKit連携
+            - よくある問題: HealthKitデータ取得、ワークアウト記録の不具合
+
+            **3. DELAxPM Web** (`delax-org/delaxpm-web`)
+            - プロジェクト管理Webアプリ  
+            - React + TypeScript + Node.js
+            - 主な機能: プロジェクト管理、チーム協業、進捗追跡
+            - よくある問題: React パフォーマンス、API連携、認証問題
+
+            **4. Shared Packages** (`delax-org/delax-shared-packages`)
+            - 共通ライブラリとツール
+            - Swift Packages + TypeScript packages + GitHub Actions
+            - 主な機能: CloudKit共有、自動化ツール、品質チェック
+            - よくある問題: ビルドエラー、依存関係、CI/CD設定
+
+            ### あなたのタスク
+
+            現在のissueの内容を分析して:
+
+            1. **どのプロジェクトに関連しているか判定**
+            2. **適切なリポジトリを特定**  
+            3. **新しいissueとして転送**
+            4. **元のissueにコメントで状況を報告**
+
+            ### 判定基準
+
+            - **MyProjects関連**: タスク、作成ボタン、SwiftData、CloudKit同期
+            - **100 Days Workout関連**: ワークアウト、フィットネス、HealthKit
+            - **DELAxPM関連**: プロジェクト管理、React、Web、チーム
+            - **Shared Packages関連**: ビルド、自動化、CI/CD、共通ライブラリ
+
+            不明な場合は、現在のリポジトリ(delax-shared-packages)で対応してください。
+
+            ## 実行してください
+
+            1. 現在のissueの内容を確認
+            2. 上記の判定基準に基づいて分類
+            3. 該当する場合は新しいリポジトリにissueを作成
+            4. 元のissueに転送完了のコメントを追加

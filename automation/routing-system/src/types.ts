@@ -110,13 +110,32 @@ export interface GitHubOperationResult {
 // Duplicate detection result
 export interface DuplicateCheckResult {
   isDuplicate: boolean;
+  reason: string;
   existingIssue?: {
-    number: number;
+    id: string;
+    processedAt: string;
+    classification: any;
     url: string;
-    repo: string;
   };
-  method: 'slack-permalink' | 'content-hash' | 'none';
-  confidence: number;
+  savedApiCalls?: number;
+  editDetails?: {
+    requiresReprocessing: boolean;
+    editDistance: number;
+    timeSinceLastEdit: number;
+    reason: string;
+  };
+}
+
+// Processing history types
+export interface ProcessingHistory {
+  version: string;
+  lastCleanup: string;
+  settings: {
+    lookbackDays: number;
+    editThreshold: number;
+    maxHistoryEntries: number;
+  };
+  processedIssues: Record<string, any>;
 }
 
 // LLM Classification context
