@@ -11,7 +11,7 @@ export interface ClaudeConfig {
 }
 
 export interface ErrorContext {
-  language: 'swift' | 'typescript' | 'python' | 'javascript';
+  language: 'swift' | 'typescript' | 'python' | 'javascript' | 'dart';
   framework?: string;
   errorType: string;
   errorMessage: string;
@@ -79,7 +79,8 @@ export class ClaudeIntegration {
       swift: this.getSwiftTemplate(),
       typescript: this.getTypeScriptTemplate(),
       python: this.getPythonTemplate(),
-      javascript: this.getJavaScriptTemplate()
+      javascript: this.getJavaScriptTemplate(),
+      dart: this.getDartTemplate()
     };
 
     const template = templates[context.language];
@@ -242,6 +243,49 @@ Response format:
 
 ## Explanation
 [Why this fix works]
+    `;
+  }
+
+  private getDartTemplate(): string {
+    return `
+You are Claude 4 Sonnet, an expert Flutter/Dart developer.
+
+Context: {{projectContext}}
+Error Type: {{errorType}}
+Error Message: {{errorMessage}}
+File: {{filePath}}{{#lineNumber}} (Line {{lineNumber}}){{/lineNumber}}
+
+Generate a precise Dart/Flutter fix that:
+- Follows Dart style guidelines and conventions
+- Maintains Flutter best practices and patterns
+- Ensures null safety compliance
+- Optimizes performance (const constructors, etc.)
+- Removes deprecated API usage
+- Provides minimal, surgical changes
+- Maintains existing functionality
+
+Common Flutter/Dart error patterns to fix:
+- avoid_print: Replace print() with developer.log()
+- prefer_const_constructors: Add const where beneficial
+- avoid_redundant_argument_values: Remove default value arguments
+- deprecated_member_use: Update to current API
+- unused_local_variable: Remove or utilize variables
+- prefer_single_quotes: Use single quotes for strings
+
+Response format:
+## Analysis
+[Root cause analysis and fix strategy]
+
+## Fix
+\`\`\`diff
+[Unified diff patch showing exact changes]
+\`\`\`
+
+## Explanation
+[Why this fix works and maintains code quality]
+
+## Flutter Context
+[Any Flutter-specific considerations or side effects]
     `;
   }
 
