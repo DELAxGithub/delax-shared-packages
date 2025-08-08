@@ -34,9 +34,9 @@ jobs:
     
     # Only process issues, not PRs or comments from bots
     if: >
-      github.event.issue && 
-      !github.event.issue.pull_request &&
-      (github.event.action == 'opened' || github.event.action == 'edited' || github.event.action == 'reopened' || github.event_name == 'workflow_dispatch')
+      (github.event.issue && !github.event.issue.pull_request &&
+       (github.event.action == 'opened' || github.event.action == 'edited' || github.event.action == 'reopened')) ||
+      github.event_name == 'workflow_dispatch'
     
     permissions:
       issues: write
