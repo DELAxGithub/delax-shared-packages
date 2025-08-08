@@ -1,0 +1,268 @@
+# Issue Routing Configuration
+# This file defines rules for automatically routing issues to appropriate repositories
+
+defaults:
+  # Fallback repository when no rules match
+  repo: "delax-org/inbox"
+  
+  # Default labels to apply to all routed issues
+  labels:
+    - "triage"
+    - "auto-routed"
+  
+  # Optional: Default GitHub Project v2 to add issues to
+  project:
+    org: "delax-org"
+    number: 12
+
+# LLM Configuration
+llm:
+  model: "claude-3-sonnet"
+  maxTokens: 4000
+  temperature: 0.1
+
+# Duplicate Detection Settings
+duplicateDetection:
+  enabled: true
+  method: "both" # Options: "slack-permalink", "content-hash", "both"
+  lookbackDays: 30
+
+# Routing Rules (applied in order, first match wins)
+rules:
+  # iOS/Swift Development
+  - when:
+      channels: ["#ios", "#mobile-dev", "#swift"]
+      keywords: 
+        - "SwiftUI"
+        - "CloudKit"
+        - "iOS"
+        - "Xcode"
+        - "Swift"
+        - "UIKit"
+        - "Core Data"
+      titlePatterns:
+        - ".*iOS.*"
+        - ".*Swift.*"
+        - ".*Xcode.*"
+    route:
+      repo: "delax-org/ios-app"
+      labels:
+        - "ios"
+        - "mobile"
+      assignees:
+        - "ios-team-lead"
+      priority: "high"
+      projectFields:
+        Status: "Todo"
+        Type: "Development"
+        Platform: "iOS"
+
+  # Backend/API Development
+  - when:
+      channels: ["#backend", "#api", "#server"]
+      keywords:
+        - "API"
+        - "Supabase"
+        - "PostgreSQL"
+        - "Node.js"
+        - "TypeScript"
+        - "Express"
+        - "GraphQL"
+        - "REST"
+      titlePatterns:
+        - ".*API.*"
+        - ".*Backend.*"
+        - ".*Server.*"
+    route:
+      repo: "delax-org/backend-services"
+      labels:
+        - "backend"
+        - "api"
+      assignees:
+        - "backend-team-lead"
+      priority: "medium"
+      projectFields:
+        Status: "Backlog"
+        Type: "Backend"
+
+  # Frontend/Web Development
+  - when:
+      channels: ["#frontend", "#web", "#ui-ux"]
+      keywords:
+        - "React"
+        - "Vue"
+        - "Angular"
+        - "CSS"
+        - "HTML"
+        - "JavaScript"
+        - "responsive"
+        - "component"
+      titlePatterns:
+        - ".*Frontend.*"
+        - ".*Web.*"
+        - ".*UI.*"
+    route:
+      repo: "delax-org/web-frontend"
+      labels:
+        - "frontend"
+        - "ui"
+      assignees:
+        - "frontend-team-lead"
+      priority: "medium"
+      projectFields:
+        Status: "Todo"
+        Type: "Frontend"
+
+  # DevOps/Infrastructure
+  - when:
+      channels: ["#devops", "#infrastructure", "#deployment"]
+      keywords:
+        - "Docker"
+        - "Kubernetes"
+        - "CI/CD"
+        - "deployment"
+        - "infrastructure"
+        - "monitoring"
+        - "scaling"
+      titlePatterns:
+        - ".*DevOps.*"
+        - ".*Deploy.*"
+        - ".*Infrastructure.*"
+    route:
+      repo: "delax-org/infrastructure"
+      labels:
+        - "devops"
+        - "infrastructure"
+      assignees:
+        - "devops-team-lead"
+      priority: "high"
+      projectFields:
+        Status: "Todo"
+        Type: "Infrastructure"
+
+  # Security Issues
+  - when:
+      keywords:
+        - "security"
+        - "vulnerability"
+        - "authentication"
+        - "authorization"
+        - "OWASP"
+        - "CVE"
+      labels:
+        - "security"
+      titlePatterns:
+        - ".*[Ss]ecurity.*"
+        - ".*[Vv]ulnerability.*"
+    route:
+      repo: "delax-org/security"
+      labels:
+        - "security"
+        - "critical"
+      assignees:
+        - "security-team-lead"
+      priority: "critical"
+      projectFields:
+        Status: "Todo"
+        Type: "Security"
+        Priority: "Critical"
+
+  # Documentation
+  - when:
+      channels: ["#docs", "#documentation"]
+      keywords:
+        - "documentation"
+        - "README"
+        - "guide"
+        - "tutorial"
+        - "wiki"
+      titlePatterns:
+        - ".*[Dd]ocs?.*"
+        - ".*[Dd]ocumentation.*"
+        - ".*README.*"
+    route:
+      repo: "delax-org/documentation"
+      labels:
+        - "documentation"
+        - "content"
+      assignees:
+        - "tech-writer"
+      priority: "low"
+      projectFields:
+        Status: "Backlog"
+        Type: "Documentation"
+
+  # Bug Reports (catch-all for bugs)
+  - when:
+      keywords:
+        - "bug"
+        - "error"
+        - "crash"
+        - "exception"
+        - "broken"
+        - "not working"
+      labels:
+        - "bug"
+      titlePatterns:
+        - ".*[Bb]ug.*"
+        - ".*[Ee]rror.*"
+        - ".*[Cc]rash.*"
+    route:
+      repo: "delax-org/bug-triage"
+      labels:
+        - "bug"
+        - "needs-triage"
+      priority: "high"
+      projectFields:
+        Status: "Todo"
+        Type: "Bug"
+        Priority: "High"
+
+  # Feature Requests
+  - when:
+      keywords:
+        - "feature"
+        - "enhancement"
+        - "improvement"
+        - "request"
+        - "add"
+        - "implement"
+      titlePatterns:
+        - ".*[Ff]eature.*"
+        - ".*[Ee]nhancement.*"
+        - ".*[Rr]equest.*"
+    route:
+      repo: "delax-org/feature-requests"
+      labels:
+        - "feature"
+        - "enhancement"
+      priority: "medium"
+      projectFields:
+        Status: "Backlog"
+        Type: "Feature"
+
+# Example environment-specific overrides
+# These would be loaded based on environment variables or deployment context
+
+development:
+  defaults:
+    repo: "delax-org/dev-sandbox"
+    labels:
+      - "development"
+      - "testing"
+
+production:
+  duplicateDetection:
+    enabled: true
+    method: "both"
+    lookbackDays: 60
+  
+  # More strict rules for production
+  rules:
+    - when:
+        keywords: ["critical", "urgent", "production down"]
+      route:
+        repo: "delax-org/critical-issues"
+        labels: ["critical", "urgent"]
+        priority: "critical"
+        assignees: ["on-call-engineer"]

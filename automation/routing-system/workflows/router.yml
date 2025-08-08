@@ -1,0 +1,263 @@
+# GitHub Actions Workflow for Issue Routing System
+# This workflow should be placed in the router repository's .github/workflows/ directory
+
+name: Route Issues
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    
+    # Only process issues in the router repository, not PRs
+    if: github.event.issue && !github.event.issue.pull_request
+    
+    permissions:
+      issues: write
+      contents: read
+      projects: write
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.ROUTING_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      NODE_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd automation/routing-system
+          npm ci
+
+      - name: Build routing system
+        run: |
+          cd automation/routing-system
+          npm run build
+
+      - name: Validate configuration
+        id: validate-config
+        run: |
+          cd automation/routing-system
+          
+          # Check if config file exists and is valid
+          if node -e "
+            const { validateConfigFile } = require('./dist');
+            const result = validateConfigFile('./config/routing.yml');
+            if (!result.valid) {
+              console.error('Configuration validation failed:', result.errors.join(', '));
+              process.exit(1);
+            }
+            console.log('✅ Configuration is valid');
+          "; then
+            echo "CONFIG_VALID=true" >> $GITHUB_OUTPUT
+          else
+            echo "CONFIG_VALID=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Extract issue data
+        id: issue-data
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            
+            // Extract Slack permalink if present in body
+            const slackLinkRegex = /https:\/\/[^.]+\.slack\.com\/archives\/[^\s)]+/g;
+            const slackLinks = (issue.body || '').match(slackLinkRegex) || [];
+            
+            const issueData = {
+              title: issue.title,
+              body: issue.body || '',
+              number: issue.number,
+              url: issue.html_url,
+              author: issue.user.login,
+              labels: issue.labels.map(label => label.name),
+              assignees: issue.assignees.map(assignee => assignee.login),
+              createdAt: issue.created_at,
+              slackPermalink: slackLinks[0] || null,
+              sourceMeta: {
+                repository: context.repo.repo,
+                sender: context.payload.sender.login,
+                action: context.payload.action
+              }
+            };
+            
+            // Save to file for Node.js script
+            const fs = require('fs');
+            fs.writeFileSync('issue-data.json', JSON.stringify(issueData, null, 2));
+            
+            return issueData;
+
+      - name: Route issue
+        id: route
+        run: |
+          cd automation/routing-system
+          
+          # Create routing script
+          cat > route-issue.js << 'EOF'
+          const { quickRoute } = require('./dist');
+          const fs = require('fs');
+          
+          async function main() {
+            try {
+              const issueData = JSON.parse(fs.readFileSync('../../issue-data.json', 'utf8'));
+              
+              console.log('🎯 Starting issue routing...');
+              console.log(`Issue: #${issueData.number} - "${issueData.title}"`);
+              
+              const result = await quickRoute(issueData, {
+                configPath: './config/routing.yml',
+                environment: process.env.NODE_ENV,
+                githubToken: process.env.GITHUB_TOKEN,
+                openaiApiKey: process.env.OPENAI_API_KEY,
+                routerRepo: '${{ github.repository }}',
+                dryRun: false,
+                verbose: true
+              });
+              
+              console.log('\n📊 Routing Result:');
+              console.log(JSON.stringify(result, null, 2));
+              
+              // Save result for subsequent steps
+              fs.writeFileSync('routing-result.json', JSON.stringify(result, null, 2));
+              
+              if (!result.success) {
+                console.error('❌ Routing failed:', result.error);
+                process.exit(1);
+              }
+              
+              console.log('✅ Routing completed successfully');
+              
+              // Set outputs for GitHub Actions
+              console.log(`::set-output name=success::${result.success}`);
+              console.log(`::set-output name=target-repo::${result.classification.repo}`);
+              console.log(`::set-output name=target-url::${result.githubOperation.issueUrl || ''}`);
+              console.log(`::set-output name=confidence::${result.classification.confidence}`);
+              
+            } catch (error) {
+              console.error('❌ Routing script failed:', error);
+              process.exit(1);
+            }
+          }
+          
+          main();
+          EOF
+          
+          # Execute routing
+          node route-issue.js
+
+      - name: Report routing result
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            try {
+              const result = JSON.parse(fs.readFileSync('automation/routing-system/routing-result.json', 'utf8'));
+              
+              let comment = '## 🤖 Issue Routing Report\n\n';
+              
+              if (result.success) {
+                comment += `✅ **Successfully routed to:** ${result.classification.repo}\n`;
+                if (result.githubOperation.issueUrl) {
+                  comment += `🔗 **New issue:** ${result.githubOperation.issueUrl}\n`;
+                }
+                comment += `🎯 **Confidence:** ${Math.round(result.classification.confidence * 100)}%\n`;
+                comment += `⚡ **Execution time:** ${result.executionTime}ms\n\n`;
+                
+                if (result.duplicateCheck.isDuplicate) {
+                  comment += `⚠️ **Duplicate detected:** Updated existing issue ${result.duplicateCheck.existingIssue?.url}\n\n`;
+                }
+                
+                comment += `**Classification reasoning:** ${result.classification.reasoning}\n\n`;
+                comment += `**Applied labels:** ${result.classification.labels.join(', ')}\n`;
+                
+                if (result.classification.assignees.length > 0) {
+                  comment += `**Assigned to:** ${result.classification.assignees.map(a => `@${a}`).join(', ')}\n`;
+                }
+              } else {
+                comment += `❌ **Routing failed:** ${result.error || 'Unknown error'}\n\n`;
+                comment += `**Fallback repo:** ${result.classification?.repo || 'N/A'}\n`;
+              }
+              
+              comment += '\n---\n';
+              comment += '*This issue was automatically processed by the routing system.*\n';
+              comment += `*Router: ${context.repo.owner}/${context.repo.repo}*`;
+              
+              // Add comment to the issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+              
+              // Add labels to indicate routing status
+              const labels = result.success ? ['routed', 'automated'] : ['routing-failed', 'needs-manual-routing'];
+              
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: labels
+              });
+              
+            } catch (error) {
+              console.error('Failed to report routing result:', error);
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '❌ **Routing system error**\n\nFailed to process this issue automatically. Please route manually.\n\n*This is an automated message.*'
+              });
+            }
+
+      - name: Handle routing failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ **Routing workflow failed**
+            
+            The automatic routing system encountered an error. This issue needs manual attention.
+            
+            **Action required:**
+            1. Review the [workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId}) for details
+            2. Manually route this issue to the appropriate repository
+            3. Check routing system configuration and logs
+            
+            *This is an automated message from the routing system.*`
+            });
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['routing-failed', 'needs-manual-attention']
+            });
+
+      - name: Upload routing logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: routing-logs-${{ github.run_number }}
+          path: |
+            automation/routing-system/routing-result.json
+            automation/routing-system/issue-data.json
+          retention-days: 30

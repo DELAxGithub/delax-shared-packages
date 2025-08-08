@@ -1,0 +1,422 @@
+# GitHub Actions Workflow for Target Repository Triage
+# This workflow should be placed in target repositories' .github/workflows/ directory
+
+name: Triage Routed Issues
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    
+    # Only process issues that have routing metadata (created by routing system)
+    if: |
+      github.event.issue && 
+      !github.event.issue.pull_request &&
+      (contains(github.event.issue.body, 'Routing Metadata') || 
+       contains(github.event.issue.labels.*.name, 'auto-routed'))
+    
+    permissions:
+      issues: write
+      projects: write
+      contents: read
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Optional: Use a different token with broader permissions for cross-org projects
+      PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract routing metadata
+        id: metadata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            
+            // Extract metadata from issue body
+            const metadata = {};
+            
+            // Extract original issue URL
+            const originalIssueMatch = body.match(/\*\*Original Issue:\*\* (.+)/);
+            if (originalIssueMatch) {
+              metadata.originalIssue = originalIssueMatch[1];
+            }
+            
+            // Extract original author
+            const authorMatch = body.match(/\*\*Author:\*\* @(.+)/);
+            if (authorMatch) {
+              metadata.originalAuthor = authorMatch[1];
+            }
+            
+            // Extract Slack thread
+            const slackMatch = body.match(/\*\*Slack Thread:\*\* (.+)/);
+            if (slackMatch) {
+              metadata.slackThread = slackMatch[1];
+            }
+            
+            // Extract content hash
+            const hashMatch = body.match(/\*\*Content Hash:\*\* `(.+)`/);
+            if (hashMatch) {
+              metadata.contentHash = hashMatch[1];
+            }
+            
+            console.log('Extracted metadata:', metadata);
+            return metadata;
+
+      - name: Determine project configuration
+        id: project-config
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Default project configuration - customize per repository
+            const projectConfig = {
+              enabled: true,
+              org: context.repo.owner,
+              // You can set a default project number or read from repository variables
+              number: parseInt(process.env.DEFAULT_PROJECT_NUMBER || '0'),
+            };
+            
+            // Repository-specific project mappings
+            const repoProjects = {
+              'ios-app': { org: 'delax-org', number: 12 },
+              'backend-services': { org: 'delax-org', number: 15 },
+              'web-frontend': { org: 'delax-org', number: 18 },
+              // Add more repository mappings as needed
+            };
+            
+            if (repoProjects[context.repo.repo]) {
+              Object.assign(projectConfig, repoProjects[context.repo.repo]);
+            }
+            
+            console.log('Project configuration:', projectConfig);
+            return projectConfig;
+
+      - name: Add to GitHub Project
+        if: steps.project-config.outputs.result != 'null' && fromJSON(steps.project-config.outputs.result).enabled
+        uses: actions/github-script@v7
+        env:
+          PROJECTS_TOKEN: ${{ env.PROJECTS_TOKEN }}
+        with:
+          github-token: ${{ env.PROJECTS_TOKEN }}
+          script: |
+            const projectConfig = ${{ steps.project-config.outputs.result }};
+            
+            if (!projectConfig.number || projectConfig.number === 0) {
+              console.log('No project number configured, skipping project addition');
+              return;
+            }
+            
+            try {
+              // Get project info
+              const projectQuery = `
+                query($org: String!, $number: Int!) {
+                  organization(login: $org) {
+                    projectV2(number: $number) {
+                      id
+                      title
+                      fields(first: 20) {
+                        nodes {
+                          ... on ProjectV2Field {
+                            id
+                            name
+                            dataType
+                          }
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            dataType
+                            options {
+                              id
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+              
+              const projectData = await github.graphql(projectQuery, {
+                org: projectConfig.org,
+                number: projectConfig.number,
+              });
+              
+              const project = projectData.organization.projectV2;
+              if (!project) {
+                console.error(`Project ${projectConfig.org}/${projectConfig.number} not found`);
+                return;
+              }
+              
+              console.log(`Found project: ${project.title}`);
+              
+              // Get issue node ID
+              const issue = context.payload.issue;
+              const issueQuery = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    issue(number: $number) {
+                      id
+                    }
+                  }
+                }
+              `;
+              
+              const issueData = await github.graphql(issueQuery, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                number: issue.number,
+              });
+              
+              const issueId = issueData.repository.issue.id;
+              
+              // Add issue to project
+              const addMutation = `
+                mutation($projectId: ID!, $contentId: ID!) {
+                  addProjectV2ItemByContentId(input: {
+                    projectId: $projectId
+                    contentId: $contentId
+                  }) {
+                    item {
+                      id
+                    }
+                  }
+                }
+              `;
+              
+              const addResult = await github.graphql(addMutation, {
+                projectId: project.id,
+                contentId: issueId,
+              });
+              
+              const itemId = addResult.addProjectV2ItemByContentId.item.id;
+              console.log(`Added issue to project with item ID: ${itemId}`);
+              
+              // Set default field values based on labels and metadata
+              await this.setProjectFields(project, itemId, issue);
+              
+            } catch (error) {
+              console.error('Failed to add to project:', error);
+              // Don't fail the workflow if project addition fails
+            }
+            
+            // Helper function to set project fields
+            async function setProjectFields(project, itemId, issue) {
+              try {
+                const labels = issue.labels.map(l => l.name);
+                
+                // Find Status field and set to "Todo"
+                const statusField = project.fields.nodes.find(f => 
+                  f.name.toLowerCase() === 'status' && f.dataType === 'SINGLE_SELECT'
+                );
+                
+                if (statusField) {
+                  const todoOption = statusField.options.find(o => 
+                    o.name.toLowerCase() === 'todo' || o.name.toLowerCase() === 'new'
+                  );
+                  
+                  if (todoOption) {
+                    const statusMutation = `
+                      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                        updateProjectV2ItemFieldValue(input: {
+                          projectId: $projectId
+                          itemId: $itemId
+                          fieldId: $fieldId
+                          value: {
+                            singleSelectOptionId: $optionId
+                          }
+                        }) {
+                          projectV2Item {
+                            id
+                          }
+                        }
+                      }
+                    `;
+                    
+                    await github.graphql(statusMutation, {
+                      projectId: project.id,
+                      itemId: itemId,
+                      fieldId: statusField.id,
+                      optionId: todoOption.id,
+                    });
+                    
+                    console.log('Set status to:', todoOption.name);
+                  }
+                }
+                
+                // Find Priority field and set based on labels
+                const priorityField = project.fields.nodes.find(f => 
+                  f.name.toLowerCase() === 'priority' && f.dataType === 'SINGLE_SELECT'
+                );
+                
+                if (priorityField) {
+                  let priority = 'Medium'; // default
+                  
+                  if (labels.some(l => ['critical', 'urgent', 'security'].includes(l.toLowerCase()))) {
+                    priority = 'Critical';
+                  } else if (labels.some(l => ['high', 'important', 'bug'].includes(l.toLowerCase()))) {
+                    priority = 'High';
+                  } else if (labels.some(l => ['low', 'minor', 'documentation'].includes(l.toLowerCase()))) {
+                    priority = 'Low';
+                  }
+                  
+                  const priorityOption = priorityField.options.find(o => 
+                    o.name.toLowerCase() === priority.toLowerCase()
+                  );
+                  
+                  if (priorityOption) {
+                    const priorityMutation = `
+                      mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                        updateProjectV2ItemFieldValue(input: {
+                          projectId: $projectId
+                          itemId: $itemId
+                          fieldId: $fieldId
+                          value: {
+                            singleSelectOptionId: $optionId
+                          }
+                        }) {
+                          projectV2Item {
+                            id
+                          }
+                        }
+                      }
+                    `;
+                    
+                    await github.graphql(priorityMutation, {
+                      projectId: project.id,
+                      itemId: itemId,
+                      fieldId: priorityField.id,
+                      optionId: priorityOption.id,
+                    });
+                    
+                    console.log('Set priority to:', priorityOption.name);
+                  }
+                }
+                
+              } catch (error) {
+                console.error('Failed to set project fields:', error);
+              }
+            }
+
+      - name: Apply repository-specific labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name);
+            
+            // Repository-specific label mappings
+            const repoLabels = {
+              'ios-app': ['ios', 'mobile'],
+              'backend-services': ['backend', 'api'],
+              'web-frontend': ['frontend', 'ui'],
+              'documentation': ['docs'],
+              'security': ['security-review'],
+              // Add more mappings as needed
+            };
+            
+            const newLabels = repoLabels[context.repo.repo] || [];
+            
+            if (newLabels.length > 0) {
+              // Only add labels that aren't already present
+              const labelsToAdd = newLabels.filter(label => !labels.includes(label));
+              
+              if (labelsToAdd.length > 0) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: labelsToAdd
+                });
+                
+                console.log('Added repository-specific labels:', labelsToAdd);
+              }
+            }
+
+      - name: Auto-assign based on labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name);
+            
+            // Auto-assignment rules based on labels
+            const assignmentRules = {
+              'critical': ['on-call-engineer'],
+              'security': ['security-team-lead'],
+              'bug': ['qa-lead'],
+              'feature': ['product-manager'],
+              // Add more rules as needed
+            };
+            
+            let assigneesToAdd = new Set();
+            
+            for (const [label, assignees] of Object.entries(assignmentRules)) {
+              if (labels.some(l => l.toLowerCase().includes(label.toLowerCase()))) {
+                assignees.forEach(assignee => assigneesToAdd.add(assignee));
+              }
+            }
+            
+            if (assigneesToAdd.size > 0 && issue.assignees.length === 0) {
+              const assigneeList = Array.from(assigneesToAdd);
+              
+              try {
+                await github.rest.issues.addAssignees({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  assignees: assigneeList
+                });
+                
+                console.log('Auto-assigned to:', assigneeList);
+              } catch (error) {
+                console.error('Failed to auto-assign:', error);
+                // Don't fail the workflow if assignment fails
+              }
+            }
+
+      - name: Add triage comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const metadata = ${{ steps.metadata.outputs.result }};
+            
+            if (!metadata || Object.keys(metadata).length === 0) {
+              return; // No routing metadata found
+            }
+            
+            let comment = '## 🎯 Auto-Triage Complete\n\n';
+            comment += 'This issue has been automatically processed and added to the project board.\n\n';
+            
+            if (metadata.originalIssue) {
+              comment += `**Original issue:** ${metadata.originalIssue}\n`;
+            }
+            
+            if (metadata.originalAuthor) {
+              comment += `**Original author:** @${metadata.originalAuthor}\n`;
+            }
+            
+            if (metadata.slackThread) {
+              comment += `**Slack discussion:** ${metadata.slackThread}\n`;
+            }
+            
+            comment += '\n**Next steps:**\n';
+            comment += '- [ ] Review and refine labels if needed\n';
+            comment += '- [ ] Assign appropriate team members\n';
+            comment += '- [ ] Set milestone if applicable\n';
+            comment += '- [ ] Add to sprint if ready for development\n\n';
+            
+            comment += '---\n*This comment was automatically generated by the triage system.*';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
