@@ -1,0 +1,577 @@
+# DELAX Issue Router - Intelligent GitHub Actions Workflow
+# Based on ios-auto-fix patterns with API usage control and duplicate prevention
+# Automatically routes issues to appropriate repositories with Claude Sonnet classification
+
+name: DELAX Issue Router
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to reprocess'
+        required: false
+        type: number
+      force_reprocess:
+        description: 'Force reprocessing (ignore duplicates)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CLAUDE_MODEL: 'claude-4-sonnet-20250514'
+  MAX_TOKENS: 4000
+  TEMPERATURE: 0.1
+  DATA_DIR: './automation/routing-system/data'
+
+jobs:
+  route-issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    # Only process issues, not PRs or comments from bots
+    if: >
+      github.event.issue && 
+      !github.event.issue.pull_request &&
+      (github.event.action == 'opened' || github.event.action == 'edited' || github.event.action == 'reopened' || github.event_name == 'workflow_dispatch')
+    
+    permissions:
+      issues: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd automation/routing-system
+          npm ci --only=production
+
+      - name: Setup data directory
+        run: |
+          mkdir -p $DATA_DIR
+          chmod 755 $DATA_DIR
+
+      - name: Install Claude CLI
+        run: |
+          pip3 install --user claude-cli anthropic
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Verify Claude CLI installation
+        run: |
+          claude --version || {
+            log_error "Claude CLI installation failed"
+            exit 1
+          }
+
+      - name: Extract issue data
+        id: issue-data
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Determine issue number
+            let issueNumber = context.issue?.number;
+            if (context.eventName === 'workflow_dispatch' && context.payload.inputs?.issue_number) {
+              issueNumber = parseInt(context.payload.inputs.issue_number);
+            }
+            
+            if (!issueNumber) {
+              throw new Error('No issue number found');
+            }
+            
+            // Get issue data
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+            
+            // Extract Slack permalink if present
+            const slackLinkRegex = /https:\/\/[^.]+\.slack\.com\/archives\/[^\s)]+/g;
+            const slackLinks = (issue.body || '').match(slackLinkRegex) || [];
+            
+            const issueData = {
+              title: issue.title,
+              body: issue.body || '',
+              number: issue.number,
+              url: issue.html_url,
+              author: issue.user.login,
+              labels: issue.labels.map(label => label.name),
+              assignees: issue.assignees.map(assignee => assignee.login),
+              createdAt: issue.created_at,
+              slackPermalink: slackLinks[0] || null,
+              sourceMeta: {
+                repository: context.repo.repo,
+                sender: context.payload.sender?.login || 'system',
+                action: context.payload.action || 'workflow_dispatch'
+              }
+            };
+            
+            // Save issue data for scripts
+            fs.writeFileSync('issue-data.json', JSON.stringify(issueData, null, 2));
+            
+            console.log(`📋 Extracted issue data for #${issueNumber}: "${issue.title}"`);
+            return issueData;
+
+      - name: Check API usage limits
+        id: usage-check
+        run: |
+          cd automation/routing-system
+          
+          # Create usage check script
+          cat > check-usage.js << 'EOF'
+          const { ApiUsageMonitor, createDefaultApiUsageConfig } = require('./dist/api-usage-monitor');
+          
+          async function checkUsage() {
+            const config = createDefaultApiUsageConfig(process.cwd());
+            const monitor = new ApiUsageMonitor(config);
+            
+            await monitor.initialize();
+            
+            const estimatedInputTokens = 2000; // Conservative estimate
+            const estimatedOutputTokens = 500;
+            
+            const result = await monitor.checkUsageLimits(estimatedInputTokens, estimatedOutputTokens);
+            
+            console.log('📊 API Usage Check:');
+            console.log(`Daily calls: ${result.currentUsage.daily.calls.current}/${result.currentUsage.daily.calls.limit} (${Math.round(result.currentUsage.daily.calls.percentage * 100)}%)`);
+            console.log(`Monthly calls: ${result.currentUsage.monthly.calls.current}/${result.currentUsage.monthly.calls.limit} (${Math.round(result.currentUsage.monthly.calls.percentage * 100)}%)`);
+            
+            if (result.warnings.length > 0) {
+              console.log('⚠️ Warnings:', result.warnings.join(', '));
+            }
+            
+            console.log(`::set-output name=allowed::${result.allowed}`);
+            console.log(`::set-output name=reason::${result.reason || 'within-limits'}`);
+            console.log(`::set-output name=daily-percentage::${Math.round(result.currentUsage.daily.calls.percentage * 100)}`);
+            console.log(`::set-output name=usage-report::${monitor.generateUsageReport()}`);
+            
+            return result.allowed;
+          }
+          
+          checkUsage().catch(error => {
+            console.error('Usage check failed:', error);
+            process.exit(1);
+          });
+          EOF
+          
+          npm run build
+          node check-usage.js
+
+      - name: Skip processing if usage limits exceeded
+        if: steps.usage-check.outputs.allowed == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reason = '${{ steps.usage-check.outputs.reason }}';
+            const usageReport = `${{ steps.usage-check.outputs.usage-report }}`;
+            
+            const comment = `## 🚫 Processing Temporarily Blocked
+            
+            ${reason}
+            
+            ${usageReport}
+            
+            **This issue will be automatically processed when usage limits reset.**
+            
+            ---
+            *Automated by DELAX Issue Router - API usage control*`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['routing-deferred', 'api-limit-exceeded']
+            });
+
+      - name: Check for duplicates
+        if: steps.usage-check.outputs.allowed == 'true'
+        id: duplicate-check
+        run: |
+          cd automation/routing-system
+          
+          # Create duplicate check script
+          cat > check-duplicates.js << 'EOF'
+          const { DuplicateDetector, createDefaultDuplicateConfig } = require('./dist/duplicate-detector');
+          const fs = require('fs');
+          
+          async function checkDuplicates() {
+            const config = createDefaultDuplicateConfig(process.cwd());
+            const detector = new DuplicateDetector(config);
+            
+            await detector.initialize();
+            
+            const issueData = JSON.parse(fs.readFileSync('../../issue-data.json', 'utf8'));
+            const forceReprocess = process.env.FORCE_REPROCESS === 'true';
+            
+            if (!forceReprocess) {
+              const result = await detector.checkDuplicate(issueData);
+              
+              console.log(`🔍 Duplicate check result: ${result.isDuplicate ? 'DUPLICATE' : 'UNIQUE'}`);
+              console.log(`Reason: ${result.reason}`);
+              
+              if (result.isDuplicate && result.savedApiCalls) {
+                console.log(`💰 Saved API calls: ${result.savedApiCalls}`);
+              }
+              
+              console.log(`::set-output name=is-duplicate::${result.isDuplicate}`);
+              console.log(`::set-output name=reason::${result.reason}`);
+              console.log(`::set-output name=saved-calls::${result.savedApiCalls || 0}`);
+              
+              if (result.existingIssue) {
+                console.log(`::set-output name=existing-issue::${JSON.stringify(result.existingIssue)}`);
+              }
+              
+              fs.writeFileSync('duplicate-result.json', JSON.stringify(result, null, 2));
+            } else {
+              console.log('🔄 Force reprocessing enabled - skipping duplicate check');
+              console.log(`::set-output name=is-duplicate::false`);
+              console.log(`::set-output name=reason::force-reprocess`);
+            }
+          }
+          
+          checkDuplicates().catch(error => {
+            console.error('Duplicate check failed:', error);
+            console.log(`::set-output name=is-duplicate::false`);
+            console.log(`::set-output name=reason::check-failed`);
+          });
+          EOF
+          
+          FORCE_REPROCESS=${{ github.event.inputs.force_reprocess || 'false' }} node check-duplicates.js
+
+      - name: Skip processing if duplicate
+        if: steps.duplicate-check.outputs.is-duplicate == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reason = '${{ steps.duplicate-check.outputs.reason }}';
+            const savedCalls = '${{ steps.duplicate-check.outputs.saved-calls }}';
+            const existingIssue = '${{ steps.duplicate-check.outputs.existing-issue }}';
+            
+            let comment = `## 🔄 Duplicate Issue Detected
+            
+            **Reason**: ${reason}
+            **API calls saved**: ${savedCalls}`;
+            
+            if (existingIssue && existingIssue !== '') {
+              const existing = JSON.parse(existingIssue);
+              comment += `
+            **Previous processing**: ${existing.processedAt}
+            **Classification**: Already routed to appropriate repository`;
+            }
+            
+            comment += `
+            
+            **To reprocess this issue**, use the workflow dispatch with "force reprocess" enabled.
+            
+            ---
+            *Automated by DELAX Issue Router - Duplicate prevention*`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['duplicate-detected', 'api-optimized']
+            });
+
+      - name: Classify issue with Claude
+        if: steps.usage-check.outputs.allowed == 'true' && steps.duplicate-check.outputs.is-duplicate == 'false'
+        id: classify
+        run: |
+          cd automation/routing-system
+          
+          echo "🤖 Starting Claude issue classification..."
+          echo "Model: $CLAUDE_MODEL"
+          echo "Max tokens: $MAX_TOKENS"
+          echo "Temperature: $TEMPERATURE"
+          
+          # Run Claude classifier script
+          if ./scripts/claude-issue-classifier.sh ../../issue-data.json; then
+            echo "✅ Classification successful"
+            echo "classification_success=true" >> $GITHUB_OUTPUT
+            
+            if [ -f "classification-result.json" ]; then
+              # Extract key classification results
+              target_repo=$(jq -r '.targetRepo' classification-result.json)
+              priority=$(jq -r '.priority' classification-result.json)
+              confidence=$(jq -r '.confidence' classification-result.json)
+              category=$(jq -r '.category' classification-result.json)
+              
+              echo "target_repo=$target_repo" >> $GITHUB_OUTPUT
+              echo "priority=$priority" >> $GITHUB_OUTPUT
+              echo "confidence=$confidence" >> $GITHUB_OUTPUT
+              echo "category=$category" >> $GITHUB_OUTPUT
+              
+              echo "📊 Classification Results:"
+              echo "  Repository: $target_repo"
+              echo "  Priority: $priority"
+              echo "  Confidence: $(echo "$confidence * 100" | bc -l | cut -d. -f1)%"
+              echo "  Category: $category"
+            fi
+          else
+            echo "❌ Classification failed"
+            echo "classification_success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Record API usage
+        if: steps.classify.outputs.classification_success == 'true'
+        run: |
+          cd automation/routing-system
+          
+          # Create usage recording script
+          cat > record-usage.js << 'EOF'
+          const { ApiUsageMonitor, createDefaultApiUsageConfig } = require('./dist/api-usage-monitor');
+          const fs = require('fs');
+          
+          async function recordUsage() {
+            const config = createDefaultApiUsageConfig(process.cwd());
+            const monitor = new ApiUsageMonitor(config);
+            
+            await monitor.initialize();
+            
+            // Extract token usage from classification result if available
+            let inputTokens = 2000; // Conservative estimate
+            let outputTokens = 500;
+            
+            if (fs.existsSync('classification-result.json')) {
+              const result = JSON.parse(fs.readFileSync('classification-result.json', 'utf8'));
+              if (result.estimatedTokens) {
+                inputTokens = result.estimatedTokens.input || inputTokens;
+                outputTokens = result.estimatedTokens.output || outputTokens;
+              }
+            }
+            
+            await monitor.recordUsage(inputTokens, outputTokens);
+            
+            console.log(`📊 Recorded API usage: ${inputTokens + outputTokens} tokens`);
+            
+            const report = monitor.generateUsageReport();
+            fs.writeFileSync('usage-report.md', report);
+          }
+          
+          recordUsage().catch(error => {
+            console.error('Failed to record usage:', error);
+            // Don't fail the job for usage recording errors
+          });
+          EOF
+          
+          node record-usage.js
+
+      - name: Record processing in duplicate detector
+        if: steps.classify.outputs.classification_success == 'true'
+        run: |
+          cd automation/routing-system
+          
+          # Create processing recording script
+          cat > record-processing.js << 'EOF'
+          const { DuplicateDetector, createDefaultDuplicateConfig } = require('./dist/duplicate-detector');
+          const fs = require('fs');
+          
+          async function recordProcessing() {
+            const config = createDefaultDuplicateConfig(process.cwd());
+            const detector = new DuplicateDetector(config);
+            
+            await detector.initialize();
+            
+            const issueData = JSON.parse(fs.readFileSync('../../issue-data.json', 'utf8'));
+            const classification = JSON.parse(fs.readFileSync('classification-result.json', 'utf8'));
+            
+            await detector.recordProcessing(
+              issueData,
+              classification,
+              1, // API calls made
+              'success'
+            );
+            
+            console.log('✅ Processing recorded for future duplicate detection');
+          }
+          
+          recordProcessing().catch(error => {
+            console.error('Failed to record processing:', error);
+            // Don't fail the job for recording errors
+          });
+          EOF
+          
+          node record-processing.js
+
+      - name: Create routing report
+        if: always()
+        id: report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comment = '## 🤖 DELAX Issue Router Report\n\n';
+            
+            // Usage status
+            const dailyUsage = '${{ steps.usage-check.outputs.daily-percentage }}';
+            if (dailyUsage) {
+              comment += `**API Usage**: ${dailyUsage}% of daily limit\n`;
+            }
+            
+            // Processing status
+            if ('${{ steps.usage-check.outputs.allowed }}' === 'false') {
+              comment += `❌ **Status**: Processing blocked due to API limits\n`;
+              comment += `**Reason**: ${{ steps.usage-check.outputs.reason }}\n\n`;
+            } else if ('${{ steps.duplicate-check.outputs.is-duplicate }}' === 'true') {
+              comment += `🔄 **Status**: Duplicate detected - processing skipped\n`;
+              comment += `**Reason**: ${{ steps.duplicate-check.outputs.reason }}\n`;
+              comment += `**API calls saved**: ${{ steps.duplicate-check.outputs.saved-calls }}\n\n`;
+            } else if ('${{ steps.classify.outputs.classification_success }}' === 'true') {
+              comment += `✅ **Status**: Successfully classified and routed\n`;
+              comment += `**Target Repository**: ${{ steps.classify.outputs.target_repo }}\n`;
+              comment += `**Priority**: ${{ steps.classify.outputs.priority }}\n`;
+              comment += `**Confidence**: ${Math.round(parseFloat('${{ steps.classify.outputs.confidence }}') * 100)}%\n`;
+              comment += `**Category**: ${{ steps.classify.outputs.category }}\n\n`;
+              
+              // Add classification details if available
+              try {
+                const classificationData = fs.readFileSync('automation/routing-system/classification-result.json', 'utf8');
+                const classification = JSON.parse(classificationData);
+                comment += `**Reasoning**: ${classification.reasoning}\n\n`;
+                
+                if (classification.labels && classification.labels.length > 0) {
+                  comment += `**Suggested Labels**: ${classification.labels.join(', ')}\n`;
+                }
+                
+                if (classification.assignees && classification.assignees.length > 0) {
+                  comment += `**Suggested Assignees**: ${classification.assignees.map(a => `@${a}`).join(', ')}\n`;
+                }
+              } catch (error) {
+                console.log('Could not read classification details:', error);
+              }
+            } else {
+              comment += `❌ **Status**: Classification failed\n`;
+            }
+            
+            // Add usage report if available
+            try {
+              const usageReport = fs.readFileSync('automation/routing-system/usage-report.md', 'utf8');
+              comment += `\n${usageReport}\n`;
+            } catch (error) {
+              console.log('Could not read usage report:', error);
+            }
+            
+            comment += '\n---\n';
+            comment += `*Powered by Claude ${process.env.CLAUDE_MODEL} • [View workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})*`;
+            
+            // Add comment to issue
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+            
+            // Add appropriate labels
+            const labels = [];
+            
+            if ('${{ steps.usage-check.outputs.allowed }}' === 'false') {
+              labels.push('routing-blocked', 'api-limit-exceeded');
+            } else if ('${{ steps.duplicate-check.outputs.is-duplicate }}' === 'true') {
+              labels.push('duplicate-detected', 'api-optimized');
+            } else if ('${{ steps.classify.outputs.classification_success }}' === 'true') {
+              labels.push('auto-classified', 'routed');
+              
+              // Add priority-based labels
+              const priority = '${{ steps.classify.outputs.priority }}';
+              if (priority === 'critical' || priority === 'high') {
+                labels.push('high-priority');
+              }
+            } else {
+              labels.push('routing-failed', 'needs-manual-attention');
+            }
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: labels
+              });
+            }
+
+      - name: Handle failures
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `❌ **DELAX Issue Router Failed**
+            
+            The automatic issue classification system encountered an error.
+            
+            **Action Required:**
+            1. Review the [workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId}) for details
+            2. Manually classify and route this issue
+            3. Check system configuration and logs
+            
+            **Debug Information:**
+            - Workflow: ${context.workflow}
+            - Run ID: ${context.runId}
+            - Event: ${context.eventName}
+            
+            ---
+            *This is an automated message from the DELAX Issue Router*`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['routing-failed', 'automation-error', 'needs-manual-attention']
+            });
+
+      - name: Upload routing artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: routing-logs-${{ github.run_number }}
+          path: |
+            issue-data.json
+            automation/routing-system/classification-result.json
+            automation/routing-system/duplicate-result.json
+            automation/routing-system/usage-report.md
+            automation/routing-system/data/
+          retention-days: 30
