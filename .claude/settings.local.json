@@ -34,7 +34,14 @@
       "Bash(./scripts/test-workflow.sh:*)",
       "Bash(./scripts/push-to-github.sh:*)",
       "Bash(gh repo list:*)",
-      "Bash(./scripts/discover-repos.sh:*)"
+      "Bash(./scripts/discover-repos.sh:*)",
+      "Bash(gh repo view:*)",
+      "Bash(./scripts/auto-setup.sh:*)",
+      "Bash(./scripts/auto-workflow.sh:*)",
+      "Bash(./scripts/auto-watcher.sh:*)",
+      "Bash(./scripts/repo-mapper.sh:*)",
+      "Bash(./scripts/issue-splitter.sh:*)",
+      "Bash(./scripts/issue-splitter.sh:*)"
     ],
     "deny": []
   }

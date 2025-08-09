@@ -1,0 +1,32 @@
+{
+  "auto_github_send": true,
+  "review_delay_seconds": 5,
+  "notification_enabled": true,
+  "slack_webhook": "",
+  "auto_archive": true,
+  "file_patterns": ["*.md"],
+  "exclude_patterns": [".*", "temp*", "draft*"],
+  "github_send_mode": "dry-run",
+  "settings": {
+    "description": "DELAX Brain Dump Automation Configuration",
+    "version": "1.0",
+    "last_updated": "2025-08-09T06:30:00Z"
+  },
+  "modes": {
+    "auto": "Automatically classify and send to GitHub",
+    "manual": "Classify only, require manual GitHub send",
+    "dry-run": "Test mode - no actual GitHub issue creation"
+  },
+  "review_delay_options": {
+    "0": "No delay - immediate processing",
+    "30": "30 seconds - quick review",
+    "300": "5 minutes - thorough review",
+    "900": "15 minutes - detailed review"
+  },
+  "notification_sounds": {
+    "start": "Hero",
+    "progress": "Tink", 
+    "success": "Glass",
+    "error": "Basso"
+  }
+}
