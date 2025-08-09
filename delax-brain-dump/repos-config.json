@@ -1,0 +1,264 @@
+{
+  "generated_at": "2025-08-08T19:28:43-04:00",
+  "source": "GitHub API",
+  "categories": {
+    "app": [
+      {
+        "name": "shadow_master",
+        "description": "",
+        "language": "Dart",
+        "updated": "2025-08-05T13:06:33Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "app",
+        "repo_url": "DELAxGithub/shadow_master"
+      },
+      {
+        "name": "delax-unified-pm",
+        "description": "",
+        "language": "TypeScript",
+        "updated": "2025-08-01T10:44:44Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "app",
+        "repo_url": "DELAxGithub/delax-unified-pm"
+      },
+      {
+        "name": "delaxcloudkit",
+        "description": "cludkitをjidoude",
+        "language": "Swift",
+        "updated": "2025-07-26T21:58:25Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "app",
+        "repo_url": "DELAxGithub/delaxcloudkit"
+      },
+      {
+        "name": "menumenu",
+        "description": "",
+        "language": "Swift",
+        "updated": "2025-07-11T10:45:22Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "app",
+        "repo_url": "DELAxGithub/menumenu"
+      }
+    ],
+    "automation": [
+      {
+        "name": "issue-router",
+        "description": "slackからissueをあげる",
+        "language": "TypeScript",
+        "updated": "2025-08-08T19:07:18Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "automation",
+        "repo_url": "DELAxGithub/issue-router"
+      },
+      {
+        "name": "slackissue",
+        "description": "Slackからissue出す",
+        "language": "Unknown",
+        "updated": "2025-08-08T17:39:54Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "automation",
+        "repo_url": "DELAxGithub/slackissue"
+      },
+      {
+        "name": "claude-code-base-action",
+        "description": "",
+        "language": "TypeScript",
+        "updated": "2025-08-01T12:35:51Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "automation",
+        "repo_url": "DELAxGithub/claude-code-base-action"
+      },
+      {
+        "name": "claude-code-action",
+        "description": "",
+        "language": "TypeScript",
+        "updated": "2025-08-01T12:31:13Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "automation",
+        "repo_url": "DELAxGithub/claude-code-action"
+      }
+    ],
+    "fitness": [
+      {
+        "name": "delax100daysworkout",
+        "description": "100日でFTP4.5倍を目指します",
+        "language": "Swift",
+        "updated": "2025-08-05T17:51:55Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "fitness",
+        "repo_url": "DELAxGithub/delax100daysworkout"
+      }
+    ],
+    "nutrition": [],
+    "project-management": [
+      {
+        "name": "myprojects",
+        "description": "プロジェクトマネジメントとTodoリスト",
+        "language": "Swift",
+        "updated": "2025-08-08T17:58:03Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "project-management",
+        "repo_url": "DELAxGithub/myprojects"
+      },
+      {
+        "name": "PMplatto",
+        "description": "プラッとの進捗管理",
+        "language": "TypeScript",
+        "updated": "2025-08-03T17:51:20Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "project-management",
+        "repo_url": "DELAxGithub/PMplatto"
+      },
+      {
+        "name": "PMliberary",
+        "description": "リベラリーのプロジェクトマネジメント",
+        "language": "TypeScript",
+        "updated": "2025-08-03T17:12:28Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "project-management",
+        "repo_url": "DELAxGithub/PMliberary"
+      },
+      {
+        "name": "DELAxPM",
+        "description": "DELAx式進捗管理",
+        "language": "HTML",
+        "updated": "2025-07-29T18:06:24Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "project-management",
+        "repo_url": "DELAxGithub/DELAxPM"
+      },
+      {
+        "name": "wordvine",
+        "description": "単語todo",
+        "language": "Unknown",
+        "updated": "2025-07-27T09:52:14Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "project-management",
+        "repo_url": "DELAxGithub/wordvine"
+      },
+      {
+        "name": "michishirebe",
+        "description": "終活TODO共有アプリ",
+        "language": "Dart",
+        "updated": "2025-07-24T14:52:03Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "project-management",
+        "repo_url": "DELAxGithub/michishirebe"
+      }
+    ],
+    "shared": [
+      {
+        "name": "delax-shared-packages",
+        "description": "delaxcomponent",
+        "language": "Swift",
+        "updated": "2025-08-08T22:59:17Z",
+        "owner": "DELAxGithub",
+        "active": true,
+        "category": "shared",
+        "repo_url": "DELAxGithub/delax-shared-packages"
+      }
+    ]
+  },
+  "classification_rules": {
+    "project-management": {
+      "keywords": [
+        "プロジェクト",
+        "管理",
+        "TODO",
+        "タスク",
+        "進捗",
+        "PM"
+      ],
+      "languages": [
+        "TypeScript",
+        "HTML",
+        "Swift"
+      ],
+      "repos": []
+    },
+    "fitness": {
+      "keywords": [
+        "ワークアウト",
+        "フィットネス",
+        "100日",
+        "FTP",
+        "運動",
+        "トレーニング"
+      ],
+      "languages": [
+        "Swift",
+        "Dart"
+      ],
+      "repos": []
+    },
+    "nutrition": {
+      "keywords": [
+        "カロリー",
+        "食事",
+        "meal",
+        "栄養",
+        "レシピ"
+      ],
+      "languages": [
+        "Dart",
+        "Swift"
+      ],
+      "repos": []
+    },
+    "shared": {
+      "keywords": [
+        "共有",
+        "shared",
+        "component",
+        "ライブラリ",
+        "パッケージ"
+      ],
+      "languages": [
+        "Swift",
+        "TypeScript"
+      ],
+      "repos": []
+    },
+    "automation": {
+      "keywords": [
+        "automation",
+        "claude",
+        "issue",
+        "slack",
+        "bot"
+      ],
+      "languages": [
+        "TypeScript",
+        "Python"
+      ],
+      "repos": []
+    },
+    "app": {
+      "keywords": [
+        "アプリ",
+        "app",
+        "mobile"
+      ],
+      "languages": [
+        "Swift",
+        "Dart"
+      ],
+      "repos": []
+    }
+  }
+}
