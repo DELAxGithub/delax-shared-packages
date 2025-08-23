@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "DELAx Dev Session Manager Configuration",
+  "description": "Configuration file for DELAx development session management system",
+  "type": "object",
+  "required": ["project", "tracking"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name",
+          "example": "MyAwesomeApp"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["ios", "web", "backend", "mobile", "python", "go", "rust"],
+          "description": "Project technology stack"
+        },
+        "source_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["src/", "lib/"],
+          "description": "Source code directories to analyze"
+        },
+        "build_command": {
+          "type": "string",
+          "default": "make build",
+          "description": "Command to build the project"
+        },
+        "test_command": {
+          "type": "string",
+          "default": "make test",
+          "description": "Command to run tests"
+        }
+      }
+    },
+    "tracking": {
+      "type": "object",
+      "required": ["progress_file"],
+      "properties": {
+        "progress_file": {
+          "type": "string",
+          "default": "PROGRESS_UNIFIED.md",
+          "description": "Main progress tracking file"
+        },
+        "session_template": {
+          "type": "string",
+          "default": "SESSION_TEMPLATE.md",
+          "description": "Session template file"
+        },
+        "backup_dir": {
+          "type": "string",
+          "default": ".progress_backup",
+          "description": "Backup directory for progress files"
+        },
+        "archive_dir": {
+          "type": "string",
+          "default": "docs/progress_archive",
+          "description": "Directory for archived progress records"
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "file_extensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [".js", ".ts", ".py"],
+          "description": "File extensions to include in statistics"
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["node_modules", "build", ".git", ".vscode"],
+          "description": "Directories to exclude from analysis"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["files", "lines", "todos", "tests", "models", "components"]
+          },
+          "default": ["files", "lines", "todos"],
+          "description": "Metrics to collect"
+        },
+        "todo_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["TODO", "FIXME", "HACK", "NOTE"],
+          "description": "Patterns to search for in code comments"
+        }
+      }
+    },
+    "presets": {
+      "type": "object",
+      "description": "Predefined configurations for common project types",
+      "properties": {
+        "ios": {
+          "type": "object",
+          "properties": {
+            "source_dirs": {
+              "default": ["Sources/", "*/", "App/"]
+            },
+            "file_extensions": {
+              "default": [".swift", ".h", ".m"]
+            },
+            "build_command": {
+              "default": "xcodebuild -scheme MyProject build"
+            },
+            "metrics": {
+              "default": ["files", "lines", "todos", "models", "views"]
+            }
+          }
+        },
+        "web": {
+          "type": "object",
+          "properties": {
+            "source_dirs": {
+              "default": ["src/", "lib/", "components/"]
+            },
+            "file_extensions": {
+              "default": [".js", ".ts", ".jsx", ".tsx", ".vue"]
+            },
+            "build_command": {
+              "default": "npm run build"
+            },
+            "test_command": {
+              "default": "npm test"
+            }
+          }
+        },
+        "python": {
+          "type": "object",
+          "properties": {
+            "source_dirs": {
+              "default": ["src/", "lib/", "app/"]
+            },
+            "file_extensions": {
+              "default": [".py"]
+            },
+            "build_command": {
+              "default": "python -m build"
+            },
+            "test_command": {
+              "default": "python -m pytest"
+            }
+          }
+        }
+      }
+    }
+  }
+}
