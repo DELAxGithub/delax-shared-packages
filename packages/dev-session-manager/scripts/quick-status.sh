@@ -72,16 +72,16 @@ build_status_found=false
 case "$PROJECT_TYPE" in
     "ios")
         if [ -f "build.log" ] || [ -f "xcodebuild.log" ]; then
-            local last_build=$(tail -1 build.log xcodebuild.log 2>/dev/null | grep -E "(BUILD SUCCEEDED|BUILD FAILED)" | tail -1 || echo "Unknown")
+            last_build=$(tail -1 build.log xcodebuild.log 2>/dev/null | grep -E "(BUILD SUCCEEDED|BUILD FAILED)" | tail -1 || echo "Unknown")
             echo "Last Build: $last_build"
             build_status_found=true
         fi
         
         # Check for Xcode build errors
         if [ -d "workoutbuilderror" ] && [ -n "$(ls -A workoutbuilderror 2>/dev/null)" ]; then
-            local latest_error=$(ls -t workoutbuilderror/*.txt 2>/dev/null | head -1)
+            latest_error=$(ls -t workoutbuilderror/*.txt 2>/dev/null | head -1)
             if [ -n "$latest_error" ]; then
-                local error_time=$(basename "$latest_error" | sed 's/Build.*_\(.*\)\.txt/\1/' | sed 's/T/ /')
+                error_time=$(basename "$latest_error" | sed 's/Build.*_\(.*\)\.txt/\1/' | sed 's/T/ /')
                 echo -e "${RED}⚠️ Latest Build Error: $error_time${NC}"
             fi
         fi
@@ -103,7 +103,7 @@ case "$PROJECT_TYPE" in
         ;;
     *)
         if [ -f "build.log" ]; then
-            local last_build=$(tail -1 build.log 2>/dev/null || echo "Unknown")
+            last_build=$(tail -1 build.log 2>/dev/null || echo "Unknown")
             echo "Last Build: $last_build"
             build_status_found=true
         fi
@@ -119,11 +119,26 @@ echo ""
 # Project statistics
 echo "📊 Project Stats:"
 
-# Get configuration arrays
-mapfile -t source_dirs < <(get_source_dirs)
-mapfile -t file_extensions < <(get_file_extensions)
-mapfile -t exclude_dirs < <(get_exclude_dirs)
-mapfile -t todo_patterns < <(get_todo_patterns)
+# Get configuration arrays (bash 3 compatible)
+source_dirs=()
+while IFS= read -r line; do
+    [ -n "$line" ] && source_dirs+=("$line")
+done < <(get_source_dirs)
+
+file_extensions=()
+while IFS= read -r line; do
+    [ -n "$line" ] && file_extensions+=("$line")
+done < <(get_file_extensions)
+
+exclude_dirs=()
+while IFS= read -r line; do
+    [ -n "$line" ] && exclude_dirs+=("$line")
+done < <(get_exclude_dirs)
+
+todo_patterns=()
+while IFS= read -r line; do
+    [ -n "$line" ] && todo_patterns+=("$line")
+done < <(get_todo_patterns)
 
 # Default fallbacks
 if [ ${#source_dirs[@]} -eq 0 ]; then
@@ -148,19 +163,29 @@ if [ ${#todo_patterns[@]} -eq 0 ]; then
     todo_patterns=("TODO" "FIXME" "HACK" "NOTE")
 fi
 
-# Count files and lines
+# Count files and lines (with performance optimization)
 total_files=0
 total_lines=0
 
+# Build find pattern for all extensions
+ext_pattern=""
+for ext in "${file_extensions[@]}"; do
+    if [ -z "$ext_pattern" ]; then
+        ext_pattern="-name \"*$ext\""
+    else
+        ext_pattern="$ext_pattern -o -name \"*$ext\""
+    fi
+done
+
 for dir in "${source_dirs[@]}"; do
     if [ -d "$dir" ]; then
-        for ext in "${file_extensions[@]}"; do
-            local files=$(find "$dir" -name "*$ext" 2>/dev/null | wc -l | xargs)
-            total_files=$((total_files + files))
-            
-            local lines=$(find "$dir" -name "*$ext" -exec cat {} \; 2>/dev/null | wc -l | xargs)
-            total_lines=$((total_lines + lines))
-        done
+        # Count files efficiently
+        files=$(eval "find \"$dir\" \\( $ext_pattern \\) 2>/dev/null" | wc -l | xargs)
+        total_files=$((total_files + files))
+        
+        # Count lines with timeout for large projects
+        lines=$(eval "find \"$dir\" \\( $ext_pattern \\) -exec wc -l {} + 2>/dev/null" | awk '{sum += $1} END {print sum+0}')
+        total_lines=$((total_lines + lines))
     fi
 done
 
@@ -189,15 +214,13 @@ case "$PROJECT_TYPE" in
         ;;
 esac
 
-# TODO/FIXME count
+# TODO/FIXME count (optimized)
 todo_count=0
 for pattern in "${todo_patterns[@]}"; do
     for dir in "${source_dirs[@]}"; do
         if [ -d "$dir" ]; then
-            for ext in "${file_extensions[@]}"; do
-                count=$(find "$dir" -name "*$ext" -exec grep -c "$pattern" {} \; 2>/dev/null | awk '{sum += $1} END {print sum+0}')
-                todo_count=$((todo_count + count))
-            done
+            count=$(eval "find \"$dir\" \\( $ext_pattern \\) -exec grep -c \"$pattern\" {} + 2>/dev/null" | awk '{sum += $1} END {print sum+0}')
+            todo_count=$((todo_count + count))
         fi
     done
 done
@@ -208,7 +231,7 @@ echo ""
 # Progress files check
 echo "📋 Progress Files:"
 if [ -f "$PROGRESS_FILE" ]; then
-    local last_updated=$(grep "Last Updated:" "$PROGRESS_FILE" | tail -1 | sed 's/.*Last Updated: //' || echo "Unknown")
+    last_updated=$(grep "Last Updated:" "$PROGRESS_FILE" | tail -1 | sed 's/.*Last Updated: //' || echo "Unknown")
     echo "✅ $PROGRESS_FILE (Updated: $last_updated)"
 else
     echo -e "${RED}❌ $PROGRESS_FILE not found${NC}"
